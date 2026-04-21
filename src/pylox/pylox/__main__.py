@@ -1,1 +1,3 @@
-print('Hello world')
+from pylox import main
+
+main()
