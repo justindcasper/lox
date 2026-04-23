@@ -76,6 +76,8 @@ class Scanner:
                     # A comment goes to the end of the line
                     while self.peek() != '\n' and not self.at_end():
                         self.advance()
+                elif self.match('*'):
+                    self.handle_block_comment()
                 else:
                     self.add_token(TokenType.SLASH)
             # Ignore whitespace
@@ -131,6 +133,23 @@ class Scanner:
         # Trim the surrounding quotes
         value = self.source[self.start + 1:self.current - 1]
         self.add_token(TokenType.STRING, literal=value)
+
+    def handle_block_comment(self) -> None:
+        while not (self.peek() == '*' and self.peek_next() == '/') and not self.at_end():
+            if self.peek() == '\n':
+                self.line += 1
+            # Support nesting through recursion
+            if self.match('/') and self.match('*'):
+                self.handle_block_comment()
+            self.advance()
+
+        if self.at_end():
+            # Not worth erroring for this?
+            return
+        
+        # The close of the block comment
+        self.advance()
+        self.advance()
 
     def match(self, expected: str) -> bool:
         if self.at_end():
