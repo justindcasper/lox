@@ -1,3 +1,4 @@
+import argparse
 import os
 import sys
 import typing
@@ -9,11 +10,12 @@ class Lox:
         self.had_error = False
 
     def main(self, args: list[str]):
-        if len(args) > 1:
-            print("Usage: {pylox | lox} [script]")
-            sys.exit(os.EX_USAGE)
-        elif len(args) == 1:
-            self.run_file(args[0])
+        parser = argparse.ArgumentParser(prog='pylox', description='Python implementation of the Lox language')
+        parser.add_argument('script', nargs='?', default='')
+        lox_args = parser.parse_args(args)
+
+        if len(lox_args.script) > 0:
+            self.run_file(lox_args.script)
         else:
             self.run_prompt()
 
