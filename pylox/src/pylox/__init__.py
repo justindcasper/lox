@@ -15,6 +15,8 @@ except ImportError:
     from .generated.Expr import Expr, Visitor, Binary, Grouping, Literal, Unary
 
 from .ast_printer import AstPrinter
+from .parser import Parser, ParseError
+
 from .lox import Lox
 
 def main():

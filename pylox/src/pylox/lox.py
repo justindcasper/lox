@@ -1,9 +1,12 @@
 import argparse
 import os
 import sys
-import typing
 
+from . import AstPrinter
+from . import Parser
 from . import Scanner
+from . import Token
+from . import TokenType
 
 class Lox:
     def __init__(self):
@@ -40,12 +43,23 @@ class Lox:
     def run(self, source: str):
         scanner = Scanner(source, self.error)
         tokens = scanner.scan_tokens()
+        parser = Parser(tokens, self.error)
+        expression = parser.parse()
 
-        for token in tokens:
-            print(token)
+        # Stop if there was a syntax error
+        if self.had_error:
+            return
+        
+        print(AstPrinter().print(expression))
 
-    def error(self, line: int, message: str, *args, **kwargs):
-        self.report(line, '', message)
+    def error(self, context: int | Token, message: str, *args, **kwargs):
+        if type(context) is int:
+            self.report(context, '', message)
+        elif type(context) is Token:
+            if context.type == TokenType.EOF:
+                self.report(context.line, ' at end', message)
+            else:
+                self.report(context.line, f" at '{context.lexeme}'", message)
 
     def report(self, line: int, where: str, message: str):
         print(f"[line {line}] Error{where}: {message}", file=sys.stderr)

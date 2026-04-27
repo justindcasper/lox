@@ -1,5 +1,3 @@
-import typing
-
 from . import TokenType
 from . import Token
 
