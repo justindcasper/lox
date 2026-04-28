@@ -1,6 +1,6 @@
 import typing
 
-from . import Expr, Binary, Unary, Literal, Grouping
+from . import Expr, Ternary, Binary, Unary, Literal, Grouping
 from . import Token
 from . import TokenType
 
@@ -20,12 +20,51 @@ class Parser:
             return None
 
     def expression(self) -> Expr:
-        return self.equality()
+        return self.comma_expression()
+    
+    def comma_expression(self) -> Expr:
+        operator_types = (TokenType.COMMA,)
+        token = self.peek()
+        if token.type in operator_types:
+            self.error(token, f"Need expression before '{token.lexeme}'.")
+            self.advance()
+            self.comma_expression()
+            return None
+            
+        expr = self.ternary()
+
+        while self.match(operator_types):
+            operator = self.previous()
+            right = self.ternary()
+            expr = Binary(expr, operator, right)
+
+        return expr
+    
+    def ternary(self) -> Expr:
+        expr = self.equality()
+
+        if self.match((TokenType.QUESTION,)):
+            question = self.previous()
+            then_case = self.ternary()
+            self.consume(TokenType.COLON, "Expect ':' in ternary expression.")
+            colon = self.previous()
+            else_case = self.ternary()
+            expr = Ternary(expr, question, then_case, colon, else_case)
+
+        return expr
     
     def equality(self) -> Expr:
+        operator_types = (TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)
+        token = self.peek()
+        if token.type in operator_types:
+            self.error(token, f"Need expression before '{token.lexeme}'.")
+            self.advance()
+            self.equality()
+            return None
+        
         expr = self.comparison()
 
-        while self.match((TokenType.BANG_EQUAL, TokenType.EQUAL_EQUAL)):
+        while self.match(operator_types):
             operator = self.previous()
             right = self.comparison()
             expr = Binary(expr, operator, right)
@@ -33,9 +72,17 @@ class Parser:
         return expr
 
     def comparison(self) -> Expr:
+        operator_types = (TokenType.LESS, TokenType.LESS_EQUAL, TokenType.GREATER, TokenType.GREATER_EQUAL)
+        token = self.peek()
+        if token.type in operator_types:
+            self.error(token, f"Need expression before '{token.lexeme}'.")
+            self.advance()
+            self.comparison()
+            return None
+        
         expr = self.term()
 
-        while self.match((TokenType.LESS, TokenType.LESS_EQUAL, TokenType.GREATER, TokenType.GREATER_EQUAL)):
+        while self.match(operator_types):
             operator = self.previous()
             right = self.term()
             expr = Binary(expr, operator, right)
@@ -43,9 +90,17 @@ class Parser:
         return expr
 
     def term(self) -> Expr:
+        operator_types = (TokenType.PLUS, TokenType.MINUS)
+        token = self.peek()
+        if token.type in operator_types:
+            self.error(token, f"Need expression before '{token.lexeme}'.")
+            self.advance()
+            self.term()
+            return None
+        
         expr = self.factor()
 
-        while self.match((TokenType.PLUS, TokenType.MINUS)):
+        while self.match(operator_types):
             operator = self.previous()
             right = self.factor()
             expr = Binary(expr, operator, right)
@@ -53,9 +108,17 @@ class Parser:
         return expr
 
     def factor(self) -> Expr:
+        operator_types = (TokenType.SLASH, TokenType.STAR)
+        token = self.peek()
+        if token.type in operator_types:
+            self.error(token, f"Need expression before '{token.lexeme}'.")
+            self.advance()
+            self.factor()
+            return None
+        
         expr = self.unary()
 
-        while self.match((TokenType.SLASH, TokenType.STAR)):
+        while self.match(operator_types):
             operator = self.previous()
             right = self.unary()
             expr = Binary(expr, operator, right)

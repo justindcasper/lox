@@ -11,6 +11,7 @@ def main():
 
     output_dir = args.output_directory
     define_ast(output_dir, 'Expr', [
+        'Ternary  : Expr condition, Token question, Expr then_expr, Token colon, Expr else_expr',
         'Binary   : Expr left, Token operator, Expr right',
         'Grouping : Expr expression',
         'Literal  : object value',

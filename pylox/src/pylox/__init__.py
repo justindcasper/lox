@@ -8,11 +8,11 @@ from .scanner import Scanner
 
 util_path = os.path.join(__path__[0], '..', 'util')
 try:
-    from .generated.Expr import Expr, Visitor, Binary, Grouping, Literal, Unary
+    from .generated.Expr import Expr, Visitor, Ternary, Binary, Grouping, Literal, Unary
 except ImportError:
     subprocess.run([sys.executable, os.path.join(util_path, 'generate_ast.py'),
                     os.path.join(__path__[0], 'generated')])
-    from .generated.Expr import Expr, Visitor, Binary, Grouping, Literal, Unary
+    from .generated.Expr import Expr, Visitor, Ternary, Binary, Grouping, Literal, Unary
 
 from .ast_printer import AstPrinter
 from .parser import Parser, ParseError

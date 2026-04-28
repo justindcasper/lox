@@ -1,11 +1,15 @@
 import typing
 
-from . import Expr, Visitor, Binary, Grouping, Literal, Unary
+from . import Expr, Visitor, Ternary, Binary, Grouping, Literal, Unary
 from . import Token, TokenType
 
 class AstPrinter(Visitor):
     def print(self, expr: Expr) -> str:
         return expr.accept(self)
+    
+    def visit_ternary_expr(self, ternary: Ternary) -> str:
+        return self.parenthesize(ternary.question.lexeme + ternary.colon.lexeme,
+                                 (ternary.condition, ternary.then_expr, ternary.else_expr))
     
     def visit_binary_expr(self, binary: Binary) -> str:
         return self.parenthesize(binary.operator.lexeme, (binary.left, binary.right))
@@ -22,7 +26,7 @@ class AstPrinter(Visitor):
         return self.parenthesize(unary.operator.lexeme, (unary.right,))
     
     def parenthesize(self, name: str, exprs: typing.Iterable[Expr]) -> str:
-        return f'({name} ' + ' '.join([expr.accept(self) for expr in exprs]) + ')'
+        return f'({name} ' + ' '.join([expr.accept(self) if expr else '' for expr in exprs]) + ')'
     
     
 def test():
