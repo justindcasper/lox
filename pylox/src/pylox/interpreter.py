@@ -47,8 +47,8 @@ class Interpreter(Visitor):
                 if isinstance(left, float) and isinstance(right, float):
                     return float(left) + float(right)
                 
-                if isinstance(left, str) and isinstance(right, str):
-                    return str(left) + str(right)
+                if isinstance(left, str) or isinstance(right, str):
+                    return Interpreter.stringify(left) + Interpreter.stringify(right)
                 
                 raise RuntimeError(binary.operator, 'Operands must be two numbers or two strings.')
             case TokenType.MINUS:
@@ -59,7 +59,10 @@ class Interpreter(Visitor):
                 return float(left) * float(right)
             case TokenType.SLASH:
                 Interpreter.check_number_operands(binary.operator, left, right)
-                return float(left) / float(right)
+                try:
+                    return float(left) / float(right)
+                except ZeroDivisionError:
+                    raise RuntimeError(binary.operator, 'Cannot divide by 0.')
             case _:
                 # Unreachable
                 return None
