@@ -92,7 +92,7 @@ class Parser:
     def term(self) -> Expr:
         operator_types = (TokenType.PLUS, TokenType.MINUS)
         token = self.peek()
-        if token.type in operator_types:
+        if token.type == TokenType.PLUS:
             self.error(token, f"Need expression before '{token.lexeme}'.")
             self.advance()
             self.term()

@@ -17,6 +17,9 @@ except ImportError:
 from .ast_printer import AstPrinter
 from .parser import Parser, ParseError
 
+from .runtime_error import RuntimeError
+from .interpreter import Interpreter
+
 from .lox import Lox
 
 def main():

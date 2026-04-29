@@ -3,14 +3,18 @@ import os
 import sys
 
 from . import AstPrinter
+from . import Interpreter
 from . import Parser
+from . import RuntimeError
 from . import Scanner
 from . import Token
 from . import TokenType
 
 class Lox:
     def __init__(self):
+        self.interpreter: Interpreter = Interpreter(self.runtime_error)
         self.had_error = False
+        self.had_runtime_error = False
 
     def main(self, args: list[str]):
         parser = argparse.ArgumentParser(prog='pylox', description='Python implementation of the Lox language')
@@ -30,6 +34,8 @@ class Lox:
         # Indicate an error on exit
         if self.had_error:
             sys.exit(os.EX_DATAERR)
+        if self.had_runtime_error:
+            sys.exit(os.EX_SOFTWARE)
     
     def run_prompt(self):
         while True:
@@ -37,6 +43,7 @@ class Lox:
                 line = input("> ")
                 self.run(line)
                 self.had_error = False
+                self.had_runtime_error = False
             except EOFError:
                 break
 
@@ -50,7 +57,7 @@ class Lox:
         if self.had_error:
             return
         
-        print(AstPrinter().print(expression))
+        self.interpreter.interpret(expression)
 
     def error(self, context: int | Token, message: str, *args, **kwargs):
         if type(context) is int:
@@ -60,6 +67,10 @@ class Lox:
                 self.report(context.line, ' at end', message)
             else:
                 self.report(context.line, f" at '{context.lexeme}'", message)
+
+    def runtime_error(self, error: RuntimeError):
+        print(f"{error}\n[line {error.token.line}]")
+        self.had_runtime_error = True
 
     def report(self, line: int, where: str, message: str):
         print(f"[line {line}] Error{where}: {message}", file=sys.stderr)
