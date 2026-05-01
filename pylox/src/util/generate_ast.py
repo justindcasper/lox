@@ -11,23 +11,33 @@ def main():
 
     output_dir = args.output_directory
     define_ast(output_dir, 'Expr', [
+        'Assign   : Token name, Expr value',
         'Ternary  : Expr condition, Token question, Expr then_expr, Token colon, Expr else_expr',
         'Binary   : Expr left, Token operator, Expr right',
         'Grouping : Expr expression',
         'Literal  : object value',
-        'Unary    : Token operator, Expr right'
-    ])
+        'Unary    : Token operator, Expr right',
+        'Variable : Token name'
+    ], needs_importing=['Token'])
+
+    define_ast(output_dir, 'Stmt', [
+        'Block          : list[Stmt] statements',
+        'ExpressionStmt : Expr expression',
+        'PrintStmt      : Expr expression',
+        'VarStmt        : Token name, Expr initializer'
+    ], needs_importing=['Expr', 'Token'])
     
-def define_ast(output_dir: str, base_name: str, types: list[str]) -> None:
+def define_ast(output_dir: str, base_name: str, types: list[str], needs_importing: list[str] = []) -> None:
     path = os.path.join(output_dir, base_name + '.py')
     with open(path, 'w') as output:
         print(f'from abc import ABC, abstractmethod', file=output)
         print('', file=output)
-        print(f'from pylox import Token', file=output)
+        for ni in needs_importing:
+            print(f'from pylox import {ni}', file=output)
         print('', file=output)
         print(f'class {base_name}(ABC):', file=output)
         print(f'{INDENT}@abstractmethod', file=output)
-        print(f'{INDENT}def accept(visitor: "Visitor"):', file=output)
+        print(f'{INDENT}def accept(visitor: "{base_name}Visitor"):', file=output)
         print(f'{INDENT}{INDENT}pass', file=output)
         print('', file=output)
 
@@ -40,7 +50,7 @@ def define_ast(output_dir: str, base_name: str, types: list[str]) -> None:
             define_type(output, base_name, class_name, fields)
 
 def define_visitor(output: typing.TextIO, base_name: str, types: list[str]) -> None:
-    print(f'class Visitor(ABC):', file=output)
+    print(f'class {base_name}Visitor(ABC):', file=output)
     lower_base_name = base_name.lower()
 
     for type in types:
@@ -70,7 +80,7 @@ def define_type(output: typing.TextIO, base_name: str, class_name: str, field_li
     # Visitor pattern
     lower_class_name = class_name.lower()
     lower_base_name = base_name.lower()
-    print(f'{INDENT}def accept(self, visitor: Visitor):', file=output)
+    print(f'{INDENT}def accept(self, visitor: {base_name}Visitor):', file=output)
     print(f'{INDENT}{INDENT}return visitor.visit_{lower_class_name}_{lower_base_name}(self)', file=output)
     
     print('', file=output)

@@ -1,6 +1,7 @@
 import typing
 
-from . import Expr, Ternary, Binary, Unary, Literal, Grouping
+from . import Expr, Assign, Ternary, Binary, Unary, Literal, Grouping, Variable
+from . import Stmt, Block, ExpressionStmt, PrintStmt, VarStmt
 from . import Token
 from . import TokenType
 
@@ -13,14 +14,77 @@ class Parser:
         self.current: int = 0
         self.error_handler = error_handler
 
-    def parse(self) -> Expr:
+    def parse(self) -> list[Stmt]:
+        statements = []
+        while not self.at_end():
+            statements.append(self.declaration())
+        
+        return statements
+    
+    def declaration(self) -> Stmt:
         try:
-            return self.expression()
+            if self.match((TokenType.VAR,)):
+                return self.var_declaration()
+            
+            return self.statement()
         except ParseError:
+            self.synchronize()
             return None
+    
+    def statement(self) -> Stmt:
+        if self.match((TokenType.PRINT,)):
+            return self.print_statement()
+        if self.match((TokenType.LEFT_BRACE,)):
+            return Block(self.block())
+        
+        return self.expression_statement()
+    
+    def block(self) -> Stmt:
+        statements: list[Stmt] = []
+
+        while not self.check(TokenType.RIGHT_BRACE) and not self.at_end():
+            statements.append(self.declaration())
+
+        self.consume(TokenType.RIGHT_BRACE, "Expect '}' after block.")
+        return statements
+    
+    def expression_statement(self) -> Stmt:
+        expr = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        return ExpressionStmt(expr)
+    
+    def print_statement(self) -> Stmt:
+        expr = self.expression()
+        self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
+        return PrintStmt(expr)
+    
+    def var_declaration(self) -> Stmt:
+        name = self.consume(TokenType.IDENTIFIER, "Expect variable name.")
+
+        initializer = None
+        if self.match((TokenType.EQUAL,)):
+            initializer = self.expression()
+
+        self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
+        return VarStmt(name, initializer)
 
     def expression(self) -> Expr:
-        return self.comma_expression()
+        return self.assignment()
+    
+    def assignment(self) -> Expr:
+        expr = self.comma_expression()
+
+        if self.match((TokenType.EQUAL,)):
+            equals = self.previous()
+            value = self.assignment()
+
+            if isinstance(expr, Variable):
+                name = expr.name
+                return Assign(name, value)
+            
+            self.error(equals, "Invalid assignment target.")
+
+        return expr
     
     def comma_expression(self) -> Expr:
         operator_types = (TokenType.COMMA,)
@@ -141,6 +205,9 @@ class Parser:
             return Literal(True)
         if self.match((TokenType.NIL,)):
             return Literal(None)
+        
+        if self.match((TokenType.IDENTIFIER,)):
+            return Variable(self.previous())
         
         if self.match((TokenType.LEFT_PAREN,)):
             expr = self.expression()

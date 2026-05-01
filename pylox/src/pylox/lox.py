@@ -51,13 +51,13 @@ class Lox:
         scanner = Scanner(source, self.error)
         tokens = scanner.scan_tokens()
         parser = Parser(tokens, self.error)
-        expression = parser.parse()
+        statements = parser.parse()
 
         # Stop if there was a syntax error
         if self.had_error:
             return
         
-        self.interpreter.interpret(expression)
+        self.interpreter.interpret(statements)
 
     def error(self, context: int | Token, message: str, *args, **kwargs):
         if type(context) is int:

@@ -1,9 +1,9 @@
 import typing
 
-from . import Expr, Visitor, Ternary, Binary, Grouping, Literal, Unary
+from . import Expr, ExprVisitor, Ternary, Binary, Grouping, Literal, Unary
 from . import Token, TokenType
 
-class AstPrinter(Visitor):
+class AstPrinter(ExprVisitor):
     def print(self, expr: Expr) -> str:
         return expr.accept(self)
     

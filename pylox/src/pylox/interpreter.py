@@ -1,18 +1,26 @@
-from . import Expr, Visitor, Ternary, Binary, Grouping, Literal, Unary
+from . import Environment
+from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Literal, Unary, Variable
 from . import RuntimeError
+from . import Stmt, StmtVisitor, Block, ExpressionStmt, PrintStmt, VarStmt
 from . import Token
 from . import TokenType
 
-class Interpreter(Visitor):
+class Interpreter(ExprVisitor, StmtVisitor):
     def __init__(self, error_handler: callable):
+        self.environment = Environment()
         self.error_handler = error_handler
 
-    def interpret(self, expression: Expr) -> None:
+    def interpret(self, statements: list[Stmt]) -> None:
         try:
-            value = self.evaluate(expression)
-            print(Interpreter.stringify(value))
+            for statement in statements:
+                self.execute(statement)
         except RuntimeError as e:
             self.error_handler(e)
+
+    def visit_assign_expr(self, assign: Assign) -> object:
+        value = self.evaluate(assign.value)
+        self.environment.assign(assign.name, value)
+        return value
 
     def visit_ternary_expr(self, ternary: Ternary) -> object:
         condition = self.evaluate(ternary.condition)
@@ -85,9 +93,42 @@ class Interpreter(Visitor):
             case _:
                 # Unreachable
                 return None
+            
+    def visit_variable_expr(self, variable: Variable) -> object:
+        return self.environment.get(variable.name)
     
     def evaluate(self, expr: Expr) -> object:
         return expr.accept(self)
+    
+    def visit_block_stmt(self, block: Block) -> None:
+        self.execute_block(block.statements, Environment(self.environment))
+    
+    def visit_expressionstmt_stmt(self, expressionstmt: ExpressionStmt) -> None:
+        self.evaluate(expressionstmt.expression)
+
+    def visit_printstmt_stmt(self, printstmt: PrintStmt) -> None:
+        value = self.evaluate(printstmt.expression)
+        print(Interpreter.stringify(value))
+
+    def visit_varstmt_stmt(self, varstmt: VarStmt) -> None:
+        value = None
+        if varstmt.initializer is not None:
+            value = self.evaluate(varstmt.initializer)
+
+        self.environment.define(varstmt.name.lexeme, value)
+
+    def execute(self, stmt: Stmt) -> None:
+        return stmt.accept(self)
+    
+    def execute_block(self, statements: list[Stmt], environment: Environment):
+        previous = self.environment
+        try:
+            self.environment = environment
+
+            for statement in statements:
+                self.execute(statement)
+        finally:
+            self.environment = previous
     
     @staticmethod
     def truthy(obj: object) -> bool:
@@ -117,6 +158,11 @@ class Interpreter(Visitor):
             if text.endswith('.0'):
                 text = text[:-2]
             return text
+        
+        if isinstance(obj, bool):
+            if obj:
+                return 'true'
+            return 'false'
         
         return str(obj)
     
