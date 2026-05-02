@@ -41,23 +41,26 @@ class Lox:
         while True:
             try:
                 line = input("> ")
-                self.run(line)
+                self.run(line, repl=True)
                 self.had_error = False
                 self.had_runtime_error = False
             except EOFError:
                 break
 
-    def run(self, source: str):
+    def run(self, source: str, repl=False):
         scanner = Scanner(source, self.error)
         tokens = scanner.scan_tokens()
         parser = Parser(tokens, self.error)
-        statements = parser.parse()
+        parsed = parser.parse_repl() if repl else parser.parse()
 
         # Stop if there was a syntax error
         if self.had_error:
             return
         
-        self.interpreter.interpret(statements)
+        if isinstance(parsed, list):
+            self.interpreter.interpret(parsed)
+        else:
+            print(Interpreter.stringify(self.interpreter.interpret_expr(parsed)))
 
     def error(self, context: int | Token, message: str, *args, **kwargs):
         if type(context) is int:

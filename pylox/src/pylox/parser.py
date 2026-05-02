@@ -16,10 +16,29 @@ class Parser:
 
     def parse(self) -> list[Stmt]:
         statements = []
+
         while not self.at_end():
             statements.append(self.declaration())
         
         return statements
+    
+    def parse_repl(self) -> list[Stmt] | Expr:
+        # Check to see if this is a single expression to evaluate
+        try:
+            # Save off the old error handler for restoration later
+            saved_error_handler = self.error_handler
+            self.error_handler = Parser._dummy_error_handler
+            expr = self.expression()
+            if self.peek().type != TokenType.EOF:
+                # This is not a bare expression; falling back to statement parsing
+                raise ParseError
+            return expr
+        except ParseError:
+            self.current = 0
+        finally:
+            self.error_handler = saved_error_handler
+
+        return self.parse()
     
     def declaration(self) -> Stmt:
         try:
@@ -267,3 +286,8 @@ class Parser:
                     return
                 
             self.advance()
+
+    # A dummy error handler during REPL interpreter sessions
+    @staticmethod
+    def _dummy_error_handler(*args):
+        pass

@@ -17,6 +17,9 @@ class Interpreter(ExprVisitor, StmtVisitor):
         except RuntimeError as e:
             self.error_handler(e)
 
+    def interpret_expr(self, expr: Expr) -> object:
+        return self.evaluate(expr)
+
     def visit_assign_expr(self, assign: Assign) -> object:
         value = self.evaluate(assign.value)
         self.environment.assign(assign.name, value)
