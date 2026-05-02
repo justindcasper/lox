@@ -1,4 +1,4 @@
-from . import Environment
+from . import Environment, UninitializedValue
 from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Literal, Unary, Variable
 from . import RuntimeError
 from . import Stmt, StmtVisitor, Block, ExpressionStmt, PrintStmt, VarStmt
@@ -18,7 +18,11 @@ class Interpreter(ExprVisitor, StmtVisitor):
             self.error_handler(e)
 
     def interpret_expr(self, expr: Expr) -> object:
-        return self.evaluate(expr)
+        try:
+            return self.evaluate(expr)
+        except RuntimeError as e:
+            self.error_handler(e)
+            return UninitializedValue()
 
     def visit_assign_expr(self, assign: Assign) -> object:
         value = self.evaluate(assign.value)
@@ -114,11 +118,11 @@ class Interpreter(ExprVisitor, StmtVisitor):
         print(Interpreter.stringify(value))
 
     def visit_varstmt_stmt(self, varstmt: VarStmt) -> None:
-        value = None
         if varstmt.initializer is not None:
             value = self.evaluate(varstmt.initializer)
+            self.environment.define(varstmt.name.lexeme, value=value)
 
-        self.environment.define(varstmt.name.lexeme, value)
+        self.environment.define(varstmt.name.lexeme)
 
     def execute(self, stmt: Stmt) -> None:
         return stmt.accept(self)
@@ -166,6 +170,9 @@ class Interpreter(ExprVisitor, StmtVisitor):
             if obj:
                 return 'true'
             return 'false'
+        
+        if isinstance(obj, UninitializedValue):
+            return ''
         
         return str(obj)
     

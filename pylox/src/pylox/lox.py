@@ -60,7 +60,9 @@ class Lox:
         if isinstance(parsed, list):
             self.interpreter.interpret(parsed)
         else:
-            print(Interpreter.stringify(self.interpreter.interpret_expr(parsed)))
+            interpreted_str = Interpreter.stringify(self.interpreter.interpret_expr(parsed))
+            if len(interpreted_str) > 0:
+                print(interpreted_str)
 
     def error(self, context: int | Token, message: str, *args, **kwargs):
         if type(context) is int:

@@ -20,7 +20,7 @@ from .ast_printer import AstPrinter
 from .parser import Parser, ParseError
 
 from .runtime_error import RuntimeError
-from .environment import Environment
+from .environment import UninitializedValue, Environment
 from .interpreter import Interpreter
 
 from .lox import Lox

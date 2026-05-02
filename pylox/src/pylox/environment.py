@@ -1,6 +1,9 @@
 from . import RuntimeError
 from . import Token
 
+class UninitializedValue:
+    pass
+
 class Environment:
     def __init__(self, enclosing: "Environment" = None):
         self.enclosing: "Environment" = enclosing
@@ -8,14 +11,17 @@ class Environment:
 
     def get(self, name: Token) -> object:
         if name.lexeme in self.values:
-            return self.values[name.lexeme]
+            value = self.values[name.lexeme]
+            if isinstance(value, UninitializedValue):
+                raise RuntimeError(name, f"Uninitialized variable '{name.lexeme}'.")
+            return value
         
         if self.enclosing is not None:
             return self.enclosing.get(name)
         
         raise RuntimeError(name, f"Undefined variable '{name.lexeme}.")
 
-    def define(self, name: str, value: object) -> None:
+    def define(self, name: str, value: object = UninitializedValue()) -> None:
         self.values[name] = value
 
     def assign(self, name: Token, value: object) -> None:
