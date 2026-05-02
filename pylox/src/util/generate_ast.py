@@ -16,6 +16,7 @@ def main():
         'Binary   : Expr left, Token operator, Expr right',
         'Grouping : Expr expression',
         'Literal  : object value',
+        'Logical  : Expr left, Token operator, Expr right',
         'Unary    : Token operator, Expr right',
         'Variable : Token name'
     ], needs_importing=['Token'])
@@ -23,8 +24,10 @@ def main():
     define_ast(output_dir, 'Stmt', [
         'Block          : list[Stmt] statements',
         'ExpressionStmt : Expr expression',
+        'IfStmt         : Expr condition, Stmt then_branch, Stmt else_branch',
         'PrintStmt      : Expr expression',
-        'VarStmt        : Token name, Expr initializer'
+        'VarStmt        : Token name, Expr initializer',
+        'WhileStmt      : Expr condition, Stmt body'
     ], needs_importing=['Expr', 'Token'])
     
 def define_ast(output_dir: str, base_name: str, types: list[str], needs_importing: list[str] = []) -> None:

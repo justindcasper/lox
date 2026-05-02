@@ -1,7 +1,7 @@
 from . import Environment, UninitializedValue
-from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Literal, Unary, Variable
+from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Literal, Logical, Unary, Variable
 from . import RuntimeError
-from . import Stmt, StmtVisitor, Block, ExpressionStmt, PrintStmt, VarStmt
+from . import Stmt, StmtVisitor, Block, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt
 from . import Token
 from . import TokenType
 
@@ -88,6 +88,18 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def visit_literal_expr(self, literal: Literal) -> object:
         return literal.value
     
+    def visit_logical_expr(self, logical: Logical) -> object:
+        left = self.evaluate(logical.left)
+
+        if logical.operator.type == TokenType.OR:
+            if Interpreter.truthy(left):
+                return left
+        else:
+            if not Interpreter.truthy(left):
+                return left
+            
+        return self.evaluate(logical.right)
+    
     def visit_unary_expr(self, unary: Unary) -> object:
         right = self.evaluate(unary.right)
 
@@ -113,6 +125,12 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def visit_expressionstmt_stmt(self, expressionstmt: ExpressionStmt) -> None:
         self.evaluate(expressionstmt.expression)
 
+    def visit_ifstmt_stmt(self, ifstmt: IfStmt) -> None:
+        if Interpreter.truthy(self.evaluate(ifstmt.condition)):
+            self.execute(ifstmt.then_branch)
+        elif ifstmt.else_branch is not None:
+            self.execute(ifstmt.else_branch)
+
     def visit_printstmt_stmt(self, printstmt: PrintStmt) -> None:
         value = self.evaluate(printstmt.expression)
         print(Interpreter.stringify(value))
@@ -121,8 +139,12 @@ class Interpreter(ExprVisitor, StmtVisitor):
         if varstmt.initializer is not None:
             value = self.evaluate(varstmt.initializer)
             self.environment.define(varstmt.name.lexeme, value=value)
+        else:
+            self.environment.define(varstmt.name.lexeme)
 
-        self.environment.define(varstmt.name.lexeme)
+    def visit_whilestmt_stmt(self, whilestmt: WhileStmt) -> None:
+        while Interpreter.truthy(self.evaluate(whilestmt.condition)):
+            self.execute(whilestmt.body)
 
     def execute(self, stmt: Stmt) -> None:
         return stmt.accept(self)
