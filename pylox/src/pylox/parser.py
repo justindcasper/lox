@@ -1,7 +1,7 @@
 import typing
 
 from . import Expr, Assign, Ternary, Binary, Unary, Literal, Logical, Grouping, Variable
-from . import Stmt, Block, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt
+from . import Stmt, Block, BreakStmt, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt
 from . import Token
 from . import TokenType
 
@@ -12,6 +12,7 @@ class Parser:
     def __init__(self, tokens: list[Token], error_handler: callable):
         self.tokens = tokens
         self.current: int = 0
+        self.loop_depth: int = 0
         self.error_handler = error_handler
 
     def parse(self) -> list[Stmt]:
@@ -59,6 +60,8 @@ class Parser:
             return self.while_statement()
         if self.match((TokenType.FOR,)):
             return self.for_statement()
+        if self.match((TokenType.BREAK,)):
+            return self.break_statement()
         if self.match((TokenType.LEFT_BRACE,)):
             return Block(self.block())
         
@@ -78,7 +81,12 @@ class Parser:
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'while'.")
         condition = self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after while condition.")
-        body = self.statement()
+
+        self.loop_depth += 1
+        try:
+            body = self.statement()
+        finally:
+            self.loop_depth -= 1
 
         return WhileStmt(condition, body)
     
@@ -97,7 +105,12 @@ class Parser:
 
         increment = None if self.check(TokenType.SEMICOLON) else self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after for clauses.")
-        body = self.statement()
+
+        self.loop_depth += 1
+        try:
+            body = self.statement()
+        finally:
+            self.loop_depth -= 1
 
         if increment is not None:
             body = Block([body, ExpressionStmt(increment)])
@@ -127,6 +140,14 @@ class Parser:
         expr = self.expression()
         self.consume(TokenType.SEMICOLON, "Expect ';' after value.")
         return PrintStmt(expr)
+    
+    def break_statement(self) -> Stmt:
+        keyword = self.previous()
+        if self.loop_depth == 0:
+            raise self.error(keyword, "Cannot use 'break' outside of a loop.")
+        
+        self.consume(TokenType.SEMICOLON, "Expect ';' after break.")
+        return BreakStmt(keyword)
     
     def var_declaration(self) -> Stmt:
         name = self.consume(TokenType.IDENTIFIER, "Expect variable name.")

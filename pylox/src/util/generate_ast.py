@@ -23,6 +23,7 @@ def main():
 
     define_ast(output_dir, 'Stmt', [
         'Block          : list[Stmt] statements',
+        'BreakStmt      : Token keyword',
         'ExpressionStmt : Expr expression',
         'IfStmt         : Expr condition, Stmt then_branch, Stmt else_branch',
         'PrintStmt      : Expr expression',

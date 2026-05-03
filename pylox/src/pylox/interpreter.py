@@ -1,9 +1,12 @@
 from . import Environment, UninitializedValue
 from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Literal, Logical, Unary, Variable
 from . import RuntimeError
-from . import Stmt, StmtVisitor, Block, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt
+from . import Stmt, StmtVisitor, Block, BreakStmt, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt
 from . import Token
 from . import TokenType
+
+class BreakSignal(Exception):
+    pass
 
 class Interpreter(ExprVisitor, StmtVisitor):
     def __init__(self, error_handler: callable):
@@ -135,6 +138,9 @@ class Interpreter(ExprVisitor, StmtVisitor):
         value = self.evaluate(printstmt.expression)
         print(Interpreter.stringify(value))
 
+    def visit_breakstmt_stmt(self, breakstmt: BreakStmt) -> None:
+        raise BreakSignal()
+
     def visit_varstmt_stmt(self, varstmt: VarStmt) -> None:
         if varstmt.initializer is not None:
             value = self.evaluate(varstmt.initializer)
@@ -143,8 +149,11 @@ class Interpreter(ExprVisitor, StmtVisitor):
             self.environment.define(varstmt.name.lexeme)
 
     def visit_whilestmt_stmt(self, whilestmt: WhileStmt) -> None:
-        while Interpreter.truthy(self.evaluate(whilestmt.condition)):
-            self.execute(whilestmt.body)
+        try:
+            while Interpreter.truthy(self.evaluate(whilestmt.condition)):
+                self.execute(whilestmt.body)
+        except BreakSignal:
+            pass
 
     def execute(self, stmt: Stmt) -> None:
         return stmt.accept(self)
