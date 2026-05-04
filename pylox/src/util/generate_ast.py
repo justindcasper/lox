@@ -14,6 +14,7 @@ def main():
         'Assign   : Token name, Expr value',
         'Ternary  : Expr condition, Token question, Expr then_expr, Token colon, Expr else_expr',
         'Binary   : Expr left, Token operator, Expr right',
+        'Call     : Expr callee, Token paren, list[Expr] arguments',
         'Grouping : Expr expression',
         'Literal  : object value',
         'Logical  : Expr left, Token operator, Expr right',
@@ -25,8 +26,10 @@ def main():
         'Block          : list[Stmt] statements',
         'BreakStmt      : Token keyword',
         'ExpressionStmt : Expr expression',
+        'FunctionStmt   : Token name, list[Token] params, list[Stmt] body',
         'IfStmt         : Expr condition, Stmt then_branch, Stmt else_branch',
         'PrintStmt      : Expr expression',
+        'ReturnStmt     : Token keyword, Expr value',
         'VarStmt        : Token name, Expr initializer',
         'WhileStmt      : Expr condition, Stmt body'
     ], needs_importing=['Expr', 'Token'])

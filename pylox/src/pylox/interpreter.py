@@ -1,17 +1,42 @@
+import time
+from typing import Any
+
 from . import Environment, UninitializedValue
-from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Literal, Logical, Unary, Variable
+from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Call, Literal, Logical, Unary, Variable
 from . import RuntimeError
-from . import Stmt, StmtVisitor, Block, BreakStmt, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt
+from . import Stmt, StmtVisitor, Block, BreakStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt
 from . import Token
 from . import TokenType
 
 class BreakSignal(Exception):
-    pass
+    def __init__(self, *args):
+        super().__init__(*args)
+
+class ReturnSignal(Exception):
+    def __init__(self, value: object, *args):
+        self.value = value
+        super().__init__(*args)
 
 class Interpreter(ExprVisitor, StmtVisitor):
+    # Using the LoxCallable interface, but without importing to avoid a circular import
+    class clock_function:
+        def __str__(self) -> str:
+            return "<native fn>"
+        
+        def arity(self):
+            return 0
+        
+        def call(self, interpreter: "Interpreter", arguments: list[Any]):
+            return time.time_ns() / 1_000_000
+        
     def __init__(self, error_handler: callable):
-        self.environment = Environment()
+        self.globals = Environment()
+        self.globals.define('clock', Interpreter.clock_function())
+        self.environment = self.globals
         self.error_handler = error_handler
+        # Late binding + dependency injection to avoid a circular import
+        from . import LoxFunction
+        self.function_class = LoxFunction
 
     def interpret(self, statements: list[Stmt]) -> None:
         try:
@@ -116,6 +141,23 @@ class Interpreter(ExprVisitor, StmtVisitor):
                 # Unreachable
                 return None
             
+    def visit_call_expr(self, call: Call) -> object:
+        callee = self.evaluate(call.callee)
+
+        arguments = []
+        for argument in call.arguments:
+            arguments.append(self.evaluate(argument))
+
+        if not hasattr(callee, "call") or not hasattr(callee, "arity"):
+            raise RuntimeError(call.paren, "Can only call functions and classes.")
+        
+        arity = callee.arity()
+        num_arguments = len(arguments)
+        if num_arguments != arity:
+            raise RuntimeError(call.paren, f"Expected {arity} arguments but got {num_arguments}.")
+
+        return callee.call(self, arguments)
+            
     def visit_variable_expr(self, variable: Variable) -> object:
         return self.environment.get(variable.name)
     
@@ -140,6 +182,11 @@ class Interpreter(ExprVisitor, StmtVisitor):
 
     def visit_breakstmt_stmt(self, breakstmt: BreakStmt) -> None:
         raise BreakSignal()
+    
+    def visit_returnstmt_stmt(self, returnstmt: ReturnStmt) -> None:
+        value = None if returnstmt.value == None else self.evaluate(returnstmt.value)
+
+        raise ReturnSignal(value)
 
     def visit_varstmt_stmt(self, varstmt: VarStmt) -> None:
         if varstmt.initializer is not None:
@@ -147,6 +194,10 @@ class Interpreter(ExprVisitor, StmtVisitor):
             self.environment.define(varstmt.name.lexeme, value=value)
         else:
             self.environment.define(varstmt.name.lexeme)
+
+    def visit_functionstmt_stmt(self, functionstmt: FunctionStmt) -> None:
+        func = self.function_class(functionstmt, self.environment)
+        self.environment.define(functionstmt.name.lexeme, func)
 
     def visit_whilestmt_stmt(self, whilestmt: WhileStmt) -> None:
         try:

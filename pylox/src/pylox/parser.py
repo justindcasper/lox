@@ -1,7 +1,7 @@
 import typing
 
-from . import Expr, Assign, Ternary, Binary, Unary, Literal, Logical, Grouping, Variable
-from . import Stmt, Block, BreakStmt, ExpressionStmt, IfStmt, PrintStmt, VarStmt, WhileStmt
+from . import Expr, Assign, Ternary, Binary, Unary, Literal, Logical, Grouping, Call, Variable
+from . import Stmt, Block, BreakStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt
 from . import Token
 from . import TokenType
 
@@ -45,6 +45,8 @@ class Parser:
         try:
             if self.match((TokenType.VAR,)):
                 return self.var_declaration()
+            if self.match((TokenType.FUN,)):
+                return self.function_declaration('function')
             
             return self.statement()
         except ParseError:
@@ -62,6 +64,8 @@ class Parser:
             return self.for_statement()
         if self.match((TokenType.BREAK,)):
             return self.break_statement()
+        if self.match((TokenType.RETURN,)):
+            return self.return_statement()
         if self.match((TokenType.LEFT_BRACE,)):
             return Block(self.block())
         
@@ -149,6 +153,13 @@ class Parser:
         self.consume(TokenType.SEMICOLON, "Expect ';' after break.")
         return BreakStmt(keyword)
     
+    def return_statement(self) -> Stmt:
+        keyword = self.previous()
+        value = None if self.check(TokenType.SEMICOLON) else self.expression()
+
+        self.consume(TokenType.SEMICOLON, "Expect ';' after return value.")
+        return ReturnStmt(keyword, value)
+    
     def var_declaration(self) -> Stmt:
         name = self.consume(TokenType.IDENTIFIER, "Expect variable name.")
 
@@ -158,12 +169,30 @@ class Parser:
 
         self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
         return VarStmt(name, initializer)
+    
+    def function_declaration(self, kind: str) -> FunctionStmt:
+        name = self.consume(TokenType.IDENTIFIER, f"Expect {kind} name.")
+        self.consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind} name.")
+        parameters: list[Token] = []
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                if len(parameters) >= 255:
+                    self.error(self.peek(), "Can't have more than 255 parameters.")
+
+                parameters.append(self.consume(TokenType.IDENTIFIER, "Expect parameter name."))
+                if not self.match((TokenType.COMMA,)):
+                    break
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
+
+        self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before {kind} body.")
+        body = self.block()
+        return FunctionStmt(name, parameters, body)
 
     def expression(self) -> Expr:
         return self.assignment()
     
     def assignment(self) -> Expr:
-        expr = self.comma_expression()
+        expr = self.ternary()
 
         if self.match((TokenType.EQUAL,)):
             equals = self.previous()
@@ -177,23 +206,24 @@ class Parser:
 
         return expr
     
-    def comma_expression(self) -> Expr:
-        operator_types = (TokenType.COMMA,)
-        token = self.peek()
-        if token.type in operator_types:
-            self.error(token, f"Need expression before '{token.lexeme}'.")
-            self.advance()
-            self.comma_expression()
-            return None
+    # Temporarily removing this?
+    # def comma_expression(self) -> Expr:
+    #     operator_types = (TokenType.COMMA,)
+    #     token = self.peek()
+    #     if token.type in operator_types:
+    #         self.error(token, f"Need expression before '{token.lexeme}'.")
+    #         self.advance()
+    #         self.comma_expression()
+    #         return None
             
-        expr = self.ternary()
+    #     expr = self.ternary()
 
-        while self.match(operator_types):
-            operator = self.previous()
-            right = self.ternary()
-            expr = Binary(expr, operator, right)
+    #     while self.match(operator_types):
+    #         operator = self.previous()
+    #         right = self.ternary()
+    #         expr = Binary(expr, operator, right)
 
-        return expr
+    #     return expr
     
     def ternary(self) -> Expr:
         expr = self.logic_or()
@@ -304,7 +334,32 @@ class Parser:
         if self.match((TokenType.BANG, TokenType.MINUS)):
             return Unary(self.previous(), self.unary())
         
-        return self.primary()
+        return self.call()
+    
+    def call(self) -> Expr:
+        expr = self.primary()
+
+        while True:
+            if self.match((TokenType.LEFT_PAREN,)):
+                expr = self.finish_call(expr)
+            else:
+                break
+
+        return expr
+    
+    def finish_call(self, callee: Expr) -> Expr:
+        arguments = []
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                if len(arguments) >= 255:
+                    self.error(self.peek(), "Can't have more than 255 arguments.")
+                arguments.append(self.expression())
+                if not self.match((TokenType.COMMA,)):
+                    break
+
+        paren = self.consume(TokenType.RIGHT_PAREN, "Expect ')' after arguments.")
+
+        return Call(callee, paren, arguments)
 
     def primary(self) -> Expr:
         if self.match((TokenType.NUMBER, TokenType.STRING)):
