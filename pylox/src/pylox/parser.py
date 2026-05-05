@@ -1,6 +1,6 @@
 import typing
 
-from . import Expr, Assign, Ternary, Binary, Unary, Literal, Logical, Grouping, Call, Variable
+from . import Expr, Assign, Ternary, Binary, Unary, Literal, Logical, Grouping, Call, Variable, LambdaFun
 from . import Stmt, Block, BreakStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt
 from . import Token
 from . import TokenType
@@ -46,7 +46,11 @@ class Parser:
             if self.match((TokenType.VAR,)):
                 return self.var_declaration()
             if self.match((TokenType.FUN,)):
-                return self.function_declaration('function')
+                if self.check(TokenType.IDENTIFIER):
+                    return self.function_declaration('function')
+                expr = self.function_expression()
+                self.consume(TokenType.SEMICOLON, "Expect ';' after expression.")
+                return ExpressionStmt(expr)
             
             return self.statement()
         except ParseError:
@@ -188,8 +192,27 @@ class Parser:
         body = self.block()
         return FunctionStmt(name, parameters, body)
 
-    def expression(self) -> Expr:
-        return self.assignment()
+    def expression(self, allow_comma=True) -> Expr:
+        return self.comma_expression() if allow_comma else self.assignment()
+    
+    def comma_expression(self) -> Expr:
+        if self.check(TokenType.COMMA):
+            comma = self.advance()
+            self.error(comma, "Expect expression before ','.")
+            return self.assignment()
+            
+        expr = self.assignment()
+
+        while self.match((TokenType.COMMA,)):
+            operator = self.previous()
+
+            if self.check(TokenType.SEMICOLON) or self.check(TokenType.RIGHT_PAREN):
+                self.error(operator, "Expect expression after ','.")
+                break
+            right = self.assignment()
+            expr = Binary(expr, operator, right)
+
+        return expr
     
     def assignment(self) -> Expr:
         expr = self.ternary()
@@ -205,25 +228,6 @@ class Parser:
             self.error(equals, "Invalid assignment target.")
 
         return expr
-    
-    # Temporarily removing this?
-    # def comma_expression(self) -> Expr:
-    #     operator_types = (TokenType.COMMA,)
-    #     token = self.peek()
-    #     if token.type in operator_types:
-    #         self.error(token, f"Need expression before '{token.lexeme}'.")
-    #         self.advance()
-    #         self.comma_expression()
-    #         return None
-            
-    #     expr = self.ternary()
-
-    #     while self.match(operator_types):
-    #         operator = self.previous()
-    #         right = self.ternary()
-    #         expr = Binary(expr, operator, right)
-
-    #     return expr
     
     def ternary(self) -> Expr:
         expr = self.logic_or()
@@ -353,7 +357,7 @@ class Parser:
             while True:
                 if len(arguments) >= 255:
                     self.error(self.peek(), "Can't have more than 255 arguments.")
-                arguments.append(self.expression())
+                arguments.append(self.expression(allow_comma=False))
                 if not self.match((TokenType.COMMA,)):
                     break
 
@@ -380,7 +384,28 @@ class Parser:
             self.consume(TokenType.RIGHT_PAREN, "Expect ')' after expression.")
             return Grouping(expr)
         
+        if self.match((TokenType.FUN,)):
+            return self.function_expression()
+        
         raise self.error(self.peek(), "Expect expression.")
+    
+    def function_expression(self) -> Expr:
+        paren = self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'fun'.")
+        parameters = []
+
+        if not self.check(TokenType.RIGHT_PAREN):
+            while True:
+                if len(parameters) >= 255:
+                    self.error(self.peek(), "Can't have more than 255 parameters.")
+                parameters.append(self.consume(TokenType.IDENTIFIER, "Expect parameter name."))
+                if not self.match((TokenType.COMMA,)):
+                    break
+
+        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
+        self.consume(TokenType.LEFT_BRACE, "Expect '{' before function body.")
+        body = self.block()
+
+        return LambdaFun(paren, parameters, body)
 
     def match(self, types: typing.Iterable[TokenType]) -> bool:
         for type in types:

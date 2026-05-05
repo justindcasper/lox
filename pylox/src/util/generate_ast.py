@@ -11,15 +11,16 @@ def main():
 
     output_dir = args.output_directory
     define_ast(output_dir, 'Expr', [
-        'Assign   : Token name, Expr value',
-        'Ternary  : Expr condition, Token question, Expr then_expr, Token colon, Expr else_expr',
-        'Binary   : Expr left, Token operator, Expr right',
-        'Call     : Expr callee, Token paren, list[Expr] arguments',
-        'Grouping : Expr expression',
-        'Literal  : object value',
-        'Logical  : Expr left, Token operator, Expr right',
-        'Unary    : Token operator, Expr right',
-        'Variable : Token name'
+        'Assign    : Token name, Expr value',
+        'Ternary   : Expr condition, Token question, Expr then_expr, Token colon, Expr else_expr',
+        'Binary    : Expr left, Token operator, Expr right',
+        'Call      : Expr callee, Token paren, list[Expr] arguments',
+        'Grouping  : Expr expression',
+        'Literal   : object value',
+        'Logical   : Expr left, Token operator, Expr right',
+        'Unary     : Token operator, Expr right',
+        'Variable  : Token name',
+        'LambdaFun : Token paren, list[Token] params, list["Stmt"] body'
     ], needs_importing=['Token'])
 
     define_ast(output_dir, 'Stmt', [

@@ -11,7 +11,8 @@ class LoxFunction(LoxCallable):
         self.closure = closure
 
     def __str__(self):
-        return f"<fn {self.declaration.name.lexeme}>"
+        name = getattr(self.declaration, "name", None)
+        return f"<fn {name.lexeme}>" if name is not None else "<anonymous fn>"
 
     def arity(self):
         return len(self.declaration.params)

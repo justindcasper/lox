@@ -2,7 +2,7 @@ import time
 from typing import Any
 
 from . import Environment, UninitializedValue
-from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Call, Literal, Logical, Unary, Variable
+from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Call, Literal, Logical, Unary, Variable, LambdaFun
 from . import RuntimeError
 from . import Stmt, StmtVisitor, Block, BreakStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt
 from . import Token
@@ -106,6 +106,8 @@ class Interpreter(ExprVisitor, StmtVisitor):
                     return float(left) / float(right)
                 except ZeroDivisionError:
                     raise RuntimeError(binary.operator, 'Cannot divide by 0.')
+            case TokenType.COMMA:
+                return right
             case _:
                 # Unreachable
                 return None
@@ -160,6 +162,9 @@ class Interpreter(ExprVisitor, StmtVisitor):
             
     def visit_variable_expr(self, variable: Variable) -> object:
         return self.environment.get(variable.name)
+    
+    def visit_lambdafun_expr(self, lambdafun: LambdaFun) -> object:
+        return self.function_class(lambdafun, self.environment)
     
     def evaluate(self, expr: Expr) -> object:
         return expr.accept(self)
