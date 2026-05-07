@@ -12,7 +12,6 @@ class Parser:
     def __init__(self, tokens: list[Token], error_handler: callable):
         self.tokens = tokens
         self.current: int = 0
-        self.loop_depth: int = 0
         self.error_handler = error_handler
 
     def parse(self) -> list[Stmt]:
@@ -90,13 +89,10 @@ class Parser:
         condition = self.expression()
         self.consume(TokenType.RIGHT_PAREN, "Expect ')' after while condition.")
 
-        self.loop_depth += 1
         try:
             body = self.statement()
         finally:
-            self.loop_depth -= 1
-
-        return WhileStmt(condition, body)
+            return WhileStmt(condition, body)
     
     def for_statement(self) -> Stmt:
         self.consume(TokenType.LEFT_PAREN, "Expect '(' after 'for'.")
@@ -151,8 +147,6 @@ class Parser:
     
     def break_statement(self) -> Stmt:
         keyword = self.previous()
-        if self.loop_depth == 0:
-            raise self.error(keyword, "Cannot use 'break' outside of a loop.")
         
         self.consume(TokenType.SEMICOLON, "Expect ';' after break.")
         return BreakStmt(keyword)

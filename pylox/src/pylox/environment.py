@@ -20,6 +20,19 @@ class Environment:
             return self.enclosing.get(name)
         
         raise RuntimeError(name, f"Undefined variable '{name.lexeme}.")
+    
+    def get_at(self, distance: int, name: str) -> object:
+        return self.ancestor(distance).values[name]
+    
+    def assign_at(self, distance: int, name: Token, value: object) -> None:
+        self.ancestor(distance).values[name.lexeme] = value
+
+    def ancestor(self, distance: int) -> "Environment":
+        environment = self
+        for i in range(distance):
+            environment = environment.enclosing
+
+        return environment
 
     def define(self, name: str, value: object = UninitializedValue()) -> None:
         self.values[name] = value

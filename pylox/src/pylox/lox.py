@@ -5,6 +5,7 @@ import sys
 from . import AstPrinter
 from . import Interpreter
 from . import Parser
+from . import Resolver
 from . import RuntimeError
 from . import Scanner
 from . import Token
@@ -54,6 +55,13 @@ class Lox:
         parsed = parser.parse_repl() if repl else parser.parse()
 
         # Stop if there was a syntax error
+        if self.had_error:
+            return
+        
+        resolver = Resolver(self.interpreter, self.error)
+        resolver.resolve(parsed)
+
+        # Stop if there was a resolution error
         if self.had_error:
             return
         

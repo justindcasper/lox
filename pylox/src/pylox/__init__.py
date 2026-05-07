@@ -26,6 +26,7 @@ from .environment import UninitializedValue, Environment
 from .interpreter import Interpreter, ReturnSignal
 from .lox_callable import LoxCallable
 from .lox_function import LoxFunction
+from .resolver import Resolver
 
 from .lox import Lox
 

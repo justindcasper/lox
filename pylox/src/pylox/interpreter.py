@@ -31,6 +31,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
         
     def __init__(self, error_handler: callable):
         self.globals = Environment()
+        self.locals: dict[Expr, int] = {}
         self.globals.define('clock', Interpreter.clock_function())
         self.environment = self.globals
         self.error_handler = error_handler
@@ -54,7 +55,13 @@ class Interpreter(ExprVisitor, StmtVisitor):
 
     def visit_assign_expr(self, assign: Assign) -> object:
         value = self.evaluate(assign.value)
-        self.environment.assign(assign.name, value)
+        
+        distance = self.locals.get(assign)
+        if distance is not None:
+            self.environment.assign_at(distance, assign.name, value)
+        else:
+            self.globals.assign(assign.name, value)
+
         return value
 
     def visit_ternary_expr(self, ternary: Ternary) -> object:
@@ -161,7 +168,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
         return callee.call(self, arguments)
             
     def visit_variable_expr(self, variable: Variable) -> object:
-        return self.environment.get(variable.name)
+        return self.lookup_variable(variable.name, variable)
     
     def visit_lambdafun_expr(self, lambdafun: LambdaFun) -> object:
         return self.function_class(lambdafun, self.environment)
@@ -223,6 +230,13 @@ class Interpreter(ExprVisitor, StmtVisitor):
                 self.execute(statement)
         finally:
             self.environment = previous
+
+    def resolve(self, expr: Expr, depth: int) -> None:
+        self.locals[expr] = depth
+
+    def lookup_variable(self, name: Token, expr: Expr) -> object:
+        distance = self.locals.get(expr)
+        return self.globals.get(name) if distance is None else self.environment.get_at(distance, name.lexeme)
     
     @staticmethod
     def truthy(obj: object) -> bool:
