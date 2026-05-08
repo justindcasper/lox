@@ -1,4 +1,5 @@
-from enum import Enum, auto
+from dataclasses import dataclass
+from enum import Enum, IntFlag, auto
 
 from . import Expr, ExprVisitor, Assign, Binary, Call, Grouping, LambdaFun, Literal, Logical, Ternary, Unary, Variable
 from . import Interpreter
@@ -9,17 +10,27 @@ class FunctionType(Enum):
     NONE = auto()
     FUNCTION = auto()
 
+class VarFlag(IntFlag):
+    NONE = 0
+    INITIALIZED = auto()
+    ACCESSED = auto()
+
+@dataclass
+class LocalVar:
+    token: Token
+    flags: VarFlag = VarFlag.NONE
+
 class Resolver(ExprVisitor, StmtVisitor):
     def __init__(self, interpreter: Interpreter, error_handler: callable):
         self.interpreter: Interpreter = interpreter
-        self.scopes: list[dict[str, bool]] = []
+        self.scopes: list[dict[str, LocalVar]] = []
         self.current_function: FunctionType = FunctionType.NONE
         self.loop_depth: int = 0
         self.error_handler = error_handler
 
     def visit_assign_expr(self, assign: Assign) -> None:
         self.resolve(assign.value)
-        self.resolve_local(assign, assign.name)
+        self.resolve_local(assign, assign.name, mark_access=False)
 
     def visit_binary_expr(self, binary: Binary) -> None:
         self.resolve(binary.left)
@@ -53,8 +64,10 @@ class Resolver(ExprVisitor, StmtVisitor):
         self.resolve(unary.right)
 
     def visit_variable_expr(self, variable: Variable) -> None:
-        if len(self.scopes) > 0 and not self.scopes[-1][variable.name.lexeme]:
-            self.error_handler(variable.name, "Can't read local variable in its own initializer.")
+        if len(self.scopes) > 0:
+            local = self.scopes[-1].get(variable.name.lexeme)
+            if local is not None and not (local.flags & VarFlag.INITIALIZED):
+                self.error_handler(variable.name, "Can't read local variable in its own initializer.")
         
         self.resolve_local(variable, variable.name)
 
@@ -115,28 +128,34 @@ class Resolver(ExprVisitor, StmtVisitor):
         self.scopes.append(dict())
 
     def end_scope(self):
-        self.scopes.pop()
+        scope = self.scopes.pop()
+
+        for local in scope.values():
+            if not local.flags & VarFlag.ACCESSED:
+                self.error_handler(local.token, f"'{local.token.lexeme}' is never used.")
 
     def declare(self, name: Token):
         if len(self.scopes) == 0:
             return
         
         scope = self.scopes[-1]
-        if name.lexeme is scope:
+        if name.lexeme in scope:
             self.error_handler(name, "Already a variable with this name in this scope.")
 
-        scope[name.lexeme] = False
+        scope[name.lexeme] = LocalVar(name)
 
     def define(self, name: Token):
         if len(self.scopes) == 0:
             return
         
-        self.scopes[-1][name.lexeme] = True
+        self.scopes[-1][name.lexeme].flags |= VarFlag.INITIALIZED
 
-    def resolve_local(self, expr: Expr, name: Token):
+    def resolve_local(self, expr: Expr, name: Token, mark_access: bool = True):
         num_scopes = 0
         for scope in reversed(self.scopes):
             if name.lexeme in scope:
+                if mark_access:
+                    scope[name.lexeme].flags |= VarFlag.ACCESSED
                 self.interpreter.resolve(expr, num_scopes)
                 return
             num_scopes += 1
