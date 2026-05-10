@@ -2,9 +2,9 @@ import time
 from typing import Any
 
 from . import Environment, UninitializedValue
-from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Call, Literal, Logical, Unary, Variable, LambdaFun
+from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Call, Get, Literal, Logical, Set, This, Unary, Variable, LambdaFun
 from . import RuntimeError
-from . import Stmt, StmtVisitor, Block, BreakStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt
+from . import Stmt, StmtVisitor, Block, BreakStmt, ClassStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt
 from . import Token
 from . import TokenType
 
@@ -37,7 +37,10 @@ class Interpreter(ExprVisitor, StmtVisitor):
         self.error_handler = error_handler
         # Late binding + dependency injection to avoid a circular import
         from . import LoxFunction
+        from . import LoxInstance, LoxClass
         self.function_class = LoxFunction
+        self.instance_class = LoxInstance
+        self.class_class = LoxClass
 
     def interpret(self, statements: list[Stmt]) -> None:
         try:
@@ -166,9 +169,28 @@ class Interpreter(ExprVisitor, StmtVisitor):
             raise RuntimeError(call.paren, f"Expected {arity} arguments but got {num_arguments}.")
 
         return callee.call(self, arguments)
+    
+    def visit_get_expr(self, get: Get) -> object:
+        obj = self.evaluate(get.obj)
+        if isinstance(obj, self.instance_class):
+            return obj.get(get.name)
+        
+        raise RuntimeError(get.name, "Only instances have properties.")
+    
+    def visit_set_expr(self, set: Set) -> object:
+        obj = self.evaluate(set.obj)
+        if not isinstance(obj, self.instance_class):
+            raise RuntimeError(set.name, "Only instances have fields.")
+        
+        value = self.evaluate(set.value)
+        obj.set(set.name, value)
+        return value
             
     def visit_variable_expr(self, variable: Variable) -> object:
         return self.lookup_variable(variable.name, variable)
+    
+    def visit_this_expr(self, this: This) -> object:
+        return self.lookup_variable(this.keyword, this)
     
     def visit_lambdafun_expr(self, lambdafun: LambdaFun) -> object:
         return self.function_class(lambdafun, self.environment)
@@ -178,6 +200,17 @@ class Interpreter(ExprVisitor, StmtVisitor):
     
     def visit_block_stmt(self, block: Block) -> None:
         self.execute_block(block.statements, Environment(self.environment))
+
+    def visit_classstmt_stmt(self, classstmt: ClassStmt) -> None:
+        self.environment.define(classstmt.name.lexeme, None)
+
+        methods = {}
+        for method in classstmt.methods:
+            func = self.function_class(method, self.environment, is_initializer=(method.name.lexeme == 'init'))
+            methods[method.name.lexeme] = func
+
+        cls = self.class_class(classstmt.name.lexeme, methods)
+        self.environment.assign(classstmt.name, cls)
     
     def visit_expressionstmt_stmt(self, expressionstmt: ExpressionStmt) -> None:
         self.evaluate(expressionstmt.expression)

@@ -1,14 +1,19 @@
 from dataclasses import dataclass
 from enum import Enum, IntFlag, auto
 
-from . import Expr, ExprVisitor, Assign, Binary, Call, Grouping, LambdaFun, Literal, Logical, Ternary, Unary, Variable
+from . import Expr, ExprVisitor, Assign, Binary, Call, Get, Grouping, LambdaFun, Literal, Logical, Set, Ternary, This, Unary, Variable
 from . import Interpreter
-from . import Stmt, StmtVisitor, Block, BreakStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt
+from . import Stmt, StmtVisitor, Block, BreakStmt, ClassStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt
 from . import Token
 
 class FunctionType(Enum):
     NONE = auto()
     FUNCTION = auto()
+    METHOD = auto()
+
+class ClassType(Enum):
+    NONE = auto()
+    CLASS = auto()
 
 class VarFlag(IntFlag):
     NONE = 0
@@ -25,6 +30,7 @@ class Resolver(ExprVisitor, StmtVisitor):
         self.interpreter: Interpreter = interpreter
         self.scopes: list[dict[str, LocalVar]] = []
         self.current_function: FunctionType = FunctionType.NONE
+        self.current_class: ClassType = ClassType.NONE
         self.loop_depth: int = 0
         self.error_handler = error_handler
 
@@ -42,6 +48,9 @@ class Resolver(ExprVisitor, StmtVisitor):
         for argument in call.arguments:
             self.resolve(argument)
 
+    def visit_get_expr(self, get: Get) -> None:
+        self.resolve(get.obj)
+
     def visit_grouping_expr(self, grouping: Grouping) -> None:
         self.resolve(grouping.expression)
 
@@ -55,10 +64,21 @@ class Resolver(ExprVisitor, StmtVisitor):
         self.resolve(logical.left)
         self.resolve(logical.right)
 
+    def visit_set_expr(self, set: Set) -> None:
+        self.resolve(set.value)
+        self.resolve(set.obj)
+
     def visit_ternary_expr(self, ternary: Ternary) -> None:
         self.resolve(ternary.condition)
         self.resolve(ternary.then_expr)
         self.resolve(ternary.else_expr)
+
+    def visit_this_expr(self, this: This) -> None:
+        if self.current_class == ClassType.NONE:
+            self.error_handler(this.keyword, "Can't use 'this' outside of a class.")
+            return
+
+        self.resolve_local(this, this.keyword)
 
     def visit_unary_expr(self, unary: Unary) -> None:
         self.resolve(unary.right)
@@ -79,6 +99,24 @@ class Resolver(ExprVisitor, StmtVisitor):
     def visit_breakstmt_stmt(self, breakstmt: BreakStmt) -> None:
         if self.loop_depth == 0:
             self.error_handler(breakstmt.keyword, "Can't use 'break' outside of a loop.")
+
+    def visit_classstmt_stmt(self, classstmt: ClassStmt) -> None:
+        enclosing_class = self.current_class
+        self.current_class = ClassType.CLASS
+
+        self.declare(classstmt.name)
+        self.define(classstmt.name)
+
+        self.begin_scope()
+        # 'this' is special, it's initialized and accessed as far as the resolver is concerned
+        self.scopes[-1]['this'] = LocalVar(classstmt.name, flags=(VarFlag.INITIALIZED | VarFlag.ACCESSED))
+
+        for method in classstmt.methods:
+            declaration = FunctionType.METHOD
+            self.resolve_function(method, declaration)
+
+        self.end_scope()
+        self.current_class = enclosing_class
 
     def visit_expressionstmt_stmt(self, expressionstmt: ExpressionStmt) -> None:
         self.resolve(expressionstmt.expression)

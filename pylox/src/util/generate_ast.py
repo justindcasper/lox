@@ -15,9 +15,12 @@ def main():
         'Ternary   : Expr condition, Token question, Expr then_expr, Token colon, Expr else_expr',
         'Binary    : Expr left, Token operator, Expr right',
         'Call      : Expr callee, Token paren, list[Expr] arguments',
+        'Get       : Expr obj, Token name',
         'Grouping  : Expr expression',
         'Literal   : object value',
         'Logical   : Expr left, Token operator, Expr right',
+        'Set       : Expr obj, Token name, Expr value',
+        'This      : Token keyword',
         'Unary     : Token operator, Expr right',
         'Variable  : Token name',
         'LambdaFun : Token paren, list[Token] params, list["Stmt"] body'
@@ -25,6 +28,7 @@ def main():
 
     define_ast(output_dir, 'Stmt', [
         'Block          : list[Stmt] statements',
+        'ClassStmt      : Token name, list["FunctionStmt"] methods',
         'BreakStmt      : Token keyword',
         'ExpressionStmt : Expr expression',
         'FunctionStmt   : Token name, list[Token] params, list[Stmt] body',
