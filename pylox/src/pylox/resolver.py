@@ -9,6 +9,7 @@ from . import Token
 class FunctionType(Enum):
     NONE = auto()
     FUNCTION = auto()
+    INITIALIZER = auto()
     METHOD = auto()
 
 class ClassType(Enum):
@@ -112,7 +113,7 @@ class Resolver(ExprVisitor, StmtVisitor):
         self.scopes[-1]['this'] = LocalVar(classstmt.name, flags=(VarFlag.INITIALIZED | VarFlag.ACCESSED))
 
         for method in classstmt.methods:
-            declaration = FunctionType.METHOD
+            declaration = FunctionType.INITIALIZER if method.name.lexeme == 'init' else FunctionType.METHOD
             self.resolve_function(method, declaration)
 
         self.end_scope()
@@ -141,6 +142,9 @@ class Resolver(ExprVisitor, StmtVisitor):
             self.error_handler(returnstmt.keyword, "Can't return from top-level code.")
 
         if returnstmt.value is not None:
+            if self.current_function == FunctionType.INITIALIZER:
+                self.error_handler(returnstmt.keyword, "Can't return a value from an initializer.")
+                
             self.resolve(returnstmt.value)
 
     def visit_varstmt_stmt(self, varstmt: VarStmt) -> None:
