@@ -7,28 +7,30 @@ from . import RuntimeError
 from . import Token
 
 class LoxInstance:
-    def __init__(self, lox_class: "LoxClass"):
+    def __init__(self, lox_class: "LoxClass | None"):
         self.lox_class: "LoxClass" = lox_class
         self.fields: dict[str, Any] = {}
 
     def __str__(self):
-        return f"{self.lox_class.name} instance"
+        return f"{self.lox_class.name} instance" if self.lox_class is not None else "class"
     
     def get(self, name: Token) -> Any:
         if name.lexeme in self.fields:
             return self.fields[name.lexeme]
         
-        method = self.lox_class.find_method(name.lexeme)
-        if method is not None:
-            return method.bind(self)
+        if self.lox_class is not None:
+            method = self.lox_class.find_method(name.lexeme)
+            if method is not None:
+                return method.bind(self)
         
         raise RuntimeError(name, f"Undefined property '{name.lexeme}'.")
     
     def set(self, name: Token, value: object) -> None:
         self.fields[name.lexeme] = value
 
-class LoxClass(LoxCallable):
-    def __init__(self, name: str, methods: dict[str, LoxFunction]):
+class LoxClass(LoxInstance, LoxCallable):
+    def __init__(self, name: str, methods: dict[str, LoxFunction], metaclass: "LoxClass | None" = None):
+        super().__init__(metaclass)
         self.name = name
         self.methods = methods
 

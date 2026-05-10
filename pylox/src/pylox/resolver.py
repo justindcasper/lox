@@ -116,6 +116,11 @@ class Resolver(ExprVisitor, StmtVisitor):
             declaration = FunctionType.INITIALIZER if method.name.lexeme == 'init' else FunctionType.METHOD
             self.resolve_function(method, declaration)
 
+        for method in classstmt.statics:
+            if method.name.lexeme == 'init':
+                self.error_handler(method.name, "Class methods cannot be initializers.")
+            self.resolve_function(method, FunctionType.METHOD)
+
         self.end_scope()
         self.current_class = enclosing_class
 
@@ -144,7 +149,7 @@ class Resolver(ExprVisitor, StmtVisitor):
         if returnstmt.value is not None:
             if self.current_function == FunctionType.INITIALIZER:
                 self.error_handler(returnstmt.keyword, "Can't return a value from an initializer.")
-                
+
             self.resolve(returnstmt.value)
 
     def visit_varstmt_stmt(self, varstmt: VarStmt) -> None:

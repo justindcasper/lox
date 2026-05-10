@@ -209,7 +209,14 @@ class Interpreter(ExprVisitor, StmtVisitor):
             func = self.function_class(method, self.environment, is_initializer=(method.name.lexeme == 'init'))
             methods[method.name.lexeme] = func
 
-        cls = self.class_class(classstmt.name.lexeme, methods)
+        statics = {}
+        for method in classstmt.statics:
+            func = self.function_class(method, self.environment)
+            statics[method.name.lexeme] = func
+
+        metaclass = self.class_class(f"{classstmt.name.lexeme} metaclass", statics)
+        cls = self.class_class(classstmt.name.lexeme, methods, metaclass=metaclass)
+
         self.environment.assign(classstmt.name, cls)
     
     def visit_expressionstmt_stmt(self, expressionstmt: ExpressionStmt) -> None:
