@@ -71,7 +71,7 @@ class Parser:
                 statics.append(self.function_declaration("static method"))
             else:
                 func = self.function_declaration("method", getter_allowed=True)
-                if func.params is None:
+                if func.getter:
                     getters.append(func)
                 else:
                     methods.append(func)
@@ -215,9 +215,7 @@ class Parser:
 
         self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before {kind} body.")
         body = self.block()
-        if is_getter:
-            parameters = None
-        return FunctionStmt(name, parameters, body)
+        return FunctionStmt(name, parameters, body, is_getter)
 
     def expression(self, allow_comma=True) -> Expr:
         return self.comma_expression() if allow_comma else self.assignment()

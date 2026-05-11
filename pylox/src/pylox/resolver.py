@@ -217,10 +217,9 @@ class Resolver(ExprVisitor, StmtVisitor):
         self.current_function = type
 
         self.begin_scope()
-        if func.params is not None:
-            for param in func.params:
-                self.declare(param)
-                self.define(param)
+        for param in func.params:
+            self.declare(param)
+            self.define(param)
         self.resolve(func.body)
         self.end_scope()
         self.current_function = enclosing_function

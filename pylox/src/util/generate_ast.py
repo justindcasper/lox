@@ -31,7 +31,7 @@ def main():
         'ClassStmt      : Token name, list["FunctionStmt"] methods, list["FunctionStmt"] getters, list["FunctionStmt"] statics',
         'BreakStmt      : Token keyword',
         'ExpressionStmt : Expr expression',
-        'FunctionStmt   : Token name, list[Token] params, list[Stmt] body',
+        'FunctionStmt   : Token name, list[Token] params, list[Stmt] body, bool getter',
         'IfStmt         : Expr condition, Stmt then_branch, Stmt else_branch',
         'PrintStmt      : Expr expression',
         'ReturnStmt     : Token keyword, Expr value',

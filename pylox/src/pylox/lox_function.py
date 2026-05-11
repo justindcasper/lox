@@ -20,9 +20,8 @@ class LoxFunction(LoxCallable):
 
     def call(self, interpreter: Interpreter, arguments: list[Any]):
         environment = Environment(self.closure)
-        if self.declaration.params is not None:
-            for param, arg in zip(self.declaration.params, arguments):
-                environment.define(param.lexeme, arg)
+        for param, arg in zip(self.declaration.params, arguments):
+            environment.define(param.lexeme, arg)
 
         try:
             interpreter.execute_block(self.declaration.body, environment)
