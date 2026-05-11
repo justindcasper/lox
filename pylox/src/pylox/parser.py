@@ -63,15 +63,21 @@ class Parser:
         self.consume(TokenType.LEFT_BRACE, "Expect '{' before class body.")
 
         methods: list[FunctionStmt] = []
+        getters: list[FunctionStmt] = []
         statics: list[FunctionStmt] = []
+        
         while not self.check(TokenType.RIGHT_BRACE) and not self.at_end():
             if self.match((TokenType.CLASS,)):
                 statics.append(self.function_declaration("static method"))
             else:
-                methods.append(self.function_declaration("method"))
+                func = self.function_declaration("method", getter_allowed=True)
+                if func.params is None:
+                    getters.append(func)
+                else:
+                    methods.append(func)
 
         self.consume(TokenType.RIGHT_BRACE, "Expect '}' after class body.")
-        return ClassStmt(name, methods, statics)
+        return ClassStmt(name, methods, getters, statics)
     
     def statement(self) -> Stmt:
         if self.match((TokenType.IF,)):
@@ -185,11 +191,18 @@ class Parser:
         self.consume(TokenType.SEMICOLON, "Expect ';' after variable declaration.")
         return VarStmt(name, initializer)
     
-    def function_declaration(self, kind: str) -> FunctionStmt:
+    def function_declaration(self, kind: str, getter_allowed: bool = False) -> FunctionStmt:
         name = self.consume(TokenType.IDENTIFIER, f"Expect {kind} name.")
-        self.consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind} name.")
+
+        is_getter = False
+        if getter_allowed:
+            if not self.match((TokenType.LEFT_PAREN,)):
+                is_getter = True
+        else:
+            self.consume(TokenType.LEFT_PAREN, f"Expect '(' after {kind} name.")
+
         parameters: list[Token] = []
-        if not self.check(TokenType.RIGHT_PAREN):
+        if not is_getter and not self.check(TokenType.RIGHT_PAREN):
             while True:
                 if len(parameters) >= 255:
                     self.error(self.peek(), "Can't have more than 255 parameters.")
@@ -197,10 +210,13 @@ class Parser:
                 parameters.append(self.consume(TokenType.IDENTIFIER, "Expect parameter name."))
                 if not self.match((TokenType.COMMA,)):
                     break
-        self.consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
+        if not is_getter:
+            self.consume(TokenType.RIGHT_PAREN, "Expect ')' after parameters.")
 
         self.consume(TokenType.LEFT_BRACE, f"Expect '{{' before {kind} body.")
         body = self.block()
+        if is_getter:
+            parameters = None
         return FunctionStmt(name, parameters, body)
 
     def expression(self, allow_comma=True) -> Expr:

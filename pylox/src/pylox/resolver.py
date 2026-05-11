@@ -116,6 +116,11 @@ class Resolver(ExprVisitor, StmtVisitor):
             declaration = FunctionType.INITIALIZER if method.name.lexeme == 'init' else FunctionType.METHOD
             self.resolve_function(method, declaration)
 
+        for getter in classstmt.getters:
+            if getter.name.lexeme == 'init':
+                self.error_handler(getter.name, "An initializer cannot be a getter.")
+            self.resolve_function(getter, FunctionType.METHOD)
+
         for method in classstmt.statics:
             if method.name.lexeme == 'init':
                 self.error_handler(method.name, "Class methods cannot be initializers.")
@@ -212,9 +217,10 @@ class Resolver(ExprVisitor, StmtVisitor):
         self.current_function = type
 
         self.begin_scope()
-        for param in func.params:
-            self.declare(param)
-            self.define(param)
+        if func.params is not None:
+            for param in func.params:
+                self.declare(param)
+                self.define(param)
         self.resolve(func.body)
         self.end_scope()
         self.current_function = enclosing_function

@@ -28,7 +28,7 @@ def main():
 
     define_ast(output_dir, 'Stmt', [
         'Block          : list[Stmt] statements',
-        'ClassStmt      : Token name, list["FunctionStmt"] methods, list["FunctionStmt"] statics',
+        'ClassStmt      : Token name, list["FunctionStmt"] methods, list["FunctionStmt"] getters, list["FunctionStmt"] statics',
         'BreakStmt      : Token keyword',
         'ExpressionStmt : Expr expression',
         'FunctionStmt   : Token name, list[Token] params, list[Stmt] body',

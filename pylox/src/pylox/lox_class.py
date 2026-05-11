@@ -14,11 +14,15 @@ class LoxInstance:
     def __str__(self):
         return f"{self.lox_class.name} instance" if self.lox_class is not None else "class"
     
-    def get(self, name: Token) -> Any:
+    def get(self, name: Token, interpreter: Interpreter) -> Any:
         if name.lexeme in self.fields:
             return self.fields[name.lexeme]
         
         if self.lox_class is not None:
+            getter = self.lox_class.find_getter(name.lexeme)
+            if getter is not None:
+                return getter.bind(self).call(interpreter, [])
+            
             method = self.lox_class.find_method(name.lexeme)
             if method is not None:
                 return method.bind(self)
@@ -29,10 +33,11 @@ class LoxInstance:
         self.fields[name.lexeme] = value
 
 class LoxClass(LoxInstance, LoxCallable):
-    def __init__(self, name: str, methods: dict[str, LoxFunction], metaclass: "LoxClass | None" = None):
+    def __init__(self, name: str, methods: dict[str, LoxFunction], getters: dict[str, LoxFunction], metaclass: "LoxClass | None" = None):
         super().__init__(metaclass)
         self.name = name
         self.methods = methods
+        self.getters = getters
 
     def __str__(self):
         return self.name
@@ -53,4 +58,7 @@ class LoxClass(LoxInstance, LoxCallable):
     
     def find_method(self, name: str) -> LoxFunction:
         return self.methods.get(name)
+    
+    def find_getter(self, name: str) -> LoxFunction:
+        return self.getters.get(name)
     

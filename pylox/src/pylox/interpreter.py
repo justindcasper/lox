@@ -173,7 +173,7 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def visit_get_expr(self, get: Get) -> object:
         obj = self.evaluate(get.obj)
         if isinstance(obj, self.instance_class):
-            return obj.get(get.name)
+            return obj.get(get.name, self)
         
         raise RuntimeError(get.name, "Only instances have properties.")
     
@@ -209,13 +209,18 @@ class Interpreter(ExprVisitor, StmtVisitor):
             func = self.function_class(method, self.environment, is_initializer=(method.name.lexeme == 'init'))
             methods[method.name.lexeme] = func
 
+        getters = {}
+        for getter in classstmt.getters:
+            func = self.function_class(getter, self.environment)
+            getters[getter.name.lexeme] = func
+
         statics = {}
         for method in classstmt.statics:
             func = self.function_class(method, self.environment)
             statics[method.name.lexeme] = func
 
-        metaclass = self.class_class(f"{classstmt.name.lexeme} metaclass", statics)
-        cls = self.class_class(classstmt.name.lexeme, methods, metaclass=metaclass)
+        metaclass = self.class_class(f"{classstmt.name.lexeme} metaclass", statics, {})
+        cls = self.class_class(classstmt.name.lexeme, methods, getters, metaclass=metaclass)
 
         self.environment.assign(classstmt.name, cls)
     
