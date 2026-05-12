@@ -33,9 +33,11 @@ class LoxInstance:
         self.fields[name.lexeme] = value
 
 class LoxClass(LoxInstance, LoxCallable):
-    def __init__(self, name: str, methods: dict[str, LoxFunction], getters: dict[str, LoxFunction], metaclass: "LoxClass | None" = None):
+    def __init__(self, name: str, superclass: "LoxClass", methods: dict[str, LoxFunction],
+                 getters: dict[str, LoxFunction], metaclass: "LoxClass | None" = None):
         super().__init__(metaclass)
         self.name = name
+        self.superclass = superclass
         self.methods = methods
         self.getters = getters
 
@@ -57,8 +59,22 @@ class LoxClass(LoxInstance, LoxCallable):
         return instance
     
     def find_method(self, name: str) -> LoxFunction:
-        return self.methods.get(name)
+        method = self.methods.get(name)
+        if method is not None:
+            return method
+        
+        if self.superclass is not None:
+            return self.superclass.find_method(name)
+        
+        return None
     
     def find_getter(self, name: str) -> LoxFunction:
-        return self.getters.get(name)
+        getter = self.getters.get(name)
+        if getter is not None:
+            return getter
+        
+        if self.superclass is not None:
+            return self.superclass.find_getter(name)
+        
+        return None
     

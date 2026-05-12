@@ -20,6 +20,7 @@ def main():
         'Literal   : object value',
         'Logical   : Expr left, Token operator, Expr right',
         'Set       : Expr obj, Token name, Expr value',
+        'Supr      : Token keyword, Token method',
         'This      : Token keyword',
         'Unary     : Token operator, Expr right',
         'Variable  : Token name',
@@ -28,7 +29,8 @@ def main():
 
     define_ast(output_dir, 'Stmt', [
         'Block          : list[Stmt] statements',
-        'ClassStmt      : Token name, list["FunctionStmt"] methods, list["FunctionStmt"] getters, list["FunctionStmt"] statics',
+        'ClassStmt      : Token name, Variable superclass, list["FunctionStmt"] methods, ' +
+            'list["FunctionStmt"] getters, list["FunctionStmt"] statics',
         'BreakStmt      : Token keyword',
         'ExpressionStmt : Expr expression',
         'FunctionStmt   : Token name, list[Token] params, list[Stmt] body, bool getter',
@@ -37,7 +39,7 @@ def main():
         'ReturnStmt     : Token keyword, Expr value',
         'VarStmt        : Token name, Expr initializer',
         'WhileStmt      : Expr condition, Stmt body'
-    ], needs_importing=['Expr', 'Token'])
+    ], needs_importing=['Expr', 'Token', 'Variable'])
     
 def define_ast(output_dir: str, base_name: str, types: list[str], needs_importing: list[str] = []) -> None:
     path = os.path.join(output_dir, base_name + '.py')

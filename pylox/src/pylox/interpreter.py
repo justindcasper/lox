@@ -2,7 +2,7 @@ import time
 from typing import Any
 
 from . import Environment, UninitializedValue
-from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Call, Get, Literal, Logical, Set, This, Unary, Variable, LambdaFun
+from . import Expr, ExprVisitor, Assign, Ternary, Binary, Grouping, Call, Get, Literal, Logical, Set, Supr, This, Unary, Variable, LambdaFun
 from . import RuntimeError
 from . import Stmt, StmtVisitor, Block, BreakStmt, ClassStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt
 from . import Token
@@ -192,6 +192,22 @@ class Interpreter(ExprVisitor, StmtVisitor):
     def visit_this_expr(self, this: This) -> object:
         return self.lookup_variable(this.keyword, this)
     
+    def visit_supr_expr(self, supr: Supr) -> object:
+        distance = self.locals.get(supr)
+        superclass = self.environment.get_at(distance, 'super')
+
+        obj = self.environment.get_at(distance - 1, 'this')
+
+        method = superclass.find_method(supr.method.lexeme)
+        if method is None:
+            # It might be a getter
+            method = superclass.find_getter(supr.method.lexeme)
+
+        if method is None:
+            raise RuntimeError(supr.method, f"Undefined property '{supr.method.lexeme}'.")
+        
+        return method.bind(obj)
+    
     def visit_lambdafun_expr(self, lambdafun: LambdaFun) -> object:
         return self.function_class(lambdafun, self.environment)
     
@@ -202,7 +218,17 @@ class Interpreter(ExprVisitor, StmtVisitor):
         self.execute_block(block.statements, Environment(self.environment))
 
     def visit_classstmt_stmt(self, classstmt: ClassStmt) -> None:
+        superclass = None
+        if classstmt.superclass is not None:
+            superclass = self.evaluate(classstmt.superclass)
+            if not isinstance(superclass, self.class_class):
+                raise RuntimeError(classstmt.superclass.name, "Superclass must be a class.")
+            
         self.environment.define(classstmt.name.lexeme, None)
+
+        if superclass is not None:
+            self.environment = Environment(self.environment)
+            self.environment.define('super', value=superclass)
 
         methods = {}
         for method in classstmt.methods:
@@ -219,8 +245,11 @@ class Interpreter(ExprVisitor, StmtVisitor):
             func = self.function_class(method, self.environment)
             statics[method.name.lexeme] = func
 
-        metaclass = self.class_class(f"{classstmt.name.lexeme} metaclass", statics, {})
-        cls = self.class_class(classstmt.name.lexeme, methods, getters, metaclass=metaclass)
+        metaclass = self.class_class(f"{classstmt.name.lexeme} metaclass", None, statics, {})
+        cls = self.class_class(classstmt.name.lexeme, superclass, methods, getters, metaclass=metaclass)
+
+        if superclass is not None:
+            self.environment = self.environment.enclosing
 
         self.environment.assign(classstmt.name, cls)
     

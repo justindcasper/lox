@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from enum import Enum, IntFlag, auto
 
-from . import Expr, ExprVisitor, Assign, Binary, Call, Get, Grouping, LambdaFun, Literal, Logical, Set, Ternary, This, Unary, Variable
+from . import Expr, ExprVisitor, Assign, Binary, Call, Get, Grouping, LambdaFun, Literal, Logical, Set, Supr, Ternary, This, Unary, Variable
 from . import Interpreter
 from . import Stmt, StmtVisitor, Block, BreakStmt, ClassStmt, ExpressionStmt, FunctionStmt, IfStmt, PrintStmt, ReturnStmt, VarStmt, WhileStmt
 from . import Token
@@ -15,6 +15,7 @@ class FunctionType(Enum):
 class ClassType(Enum):
     NONE = auto()
     CLASS = auto()
+    SUBCLASS = auto()
 
 class VarFlag(IntFlag):
     NONE = 0
@@ -69,6 +70,14 @@ class Resolver(ExprVisitor, StmtVisitor):
         self.resolve(set.value)
         self.resolve(set.obj)
 
+    def visit_supr_expr(self, supr: Supr) -> None:
+        if self.current_class == ClassType.NONE:
+            self.error_handler(supr.keyword, "Can't use 'super' outside a class.")
+        elif self.current_class != ClassType.SUBCLASS:
+            self.error_handler(supr.keyword, "Can't use 'super' in a class with no superclass.")
+            
+        self.resolve_local(supr, supr.keyword)
+
     def visit_ternary_expr(self, ternary: Ternary) -> None:
         self.resolve(ternary.condition)
         self.resolve(ternary.then_expr)
@@ -108,6 +117,17 @@ class Resolver(ExprVisitor, StmtVisitor):
         self.declare(classstmt.name)
         self.define(classstmt.name)
 
+        if classstmt.superclass is not None:
+            if classstmt.superclass.name.lexeme == classstmt.name.lexeme:
+                self.error_handler(classstmt.superclass.name, "A class can't inherit from itself.")
+
+            self.current_class = ClassType.SUBCLASS
+            self.resolve(classstmt.superclass)
+
+            self.begin_scope()
+            # 'super' is special, it's initialized and accessed as far as the resolver is concerned
+            self.scopes[-1]['super'] = LocalVar(classstmt.name, flags=(VarFlag.INITIALIZED | VarFlag.ACCESSED))
+
         self.begin_scope()
         # 'this' is special, it's initialized and accessed as far as the resolver is concerned
         self.scopes[-1]['this'] = LocalVar(classstmt.name, flags=(VarFlag.INITIALIZED | VarFlag.ACCESSED))
@@ -127,6 +147,10 @@ class Resolver(ExprVisitor, StmtVisitor):
             self.resolve_function(method, FunctionType.METHOD)
 
         self.end_scope()
+
+        if classstmt.superclass is not None:
+            self.end_scope()
+
         self.current_class = enclosing_class
 
     def visit_expressionstmt_stmt(self, expressionstmt: ExpressionStmt) -> None:
