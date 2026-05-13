@@ -1,3 +1,5 @@
-#!/bin/bash
-mkdir build && cd build
-cmake .. && make
+#!/bin/env bash
+set -euo pipefail
+
+cmake -S . -B build
+cmake --build build
