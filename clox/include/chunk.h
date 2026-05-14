@@ -1,0 +1,25 @@
+#ifndef CLOX_CHUNK_H
+#define CLOX_CHUNK_H
+
+#include "common.h"
+#include "value.h"
+
+typedef enum {
+    OP_CONSTANT,
+    OP_RETURN
+} OpCode;
+
+typedef struct {
+    unsigned int count;
+    unsigned int capacity;
+    uint8_t * code;
+    unsigned int * lines;
+    ValueArray constants;
+} Chunk;
+
+void chunk_init(Chunk * chunk);
+void chunk_write(Chunk * chunk, uint8_t byte, unsigned int line);
+unsigned int chunk_add_constant(Chunk * chunk, Value value);
+void chunk_free(Chunk * chunk);
+
+#endif /* CLOX_CHUNK_H */
