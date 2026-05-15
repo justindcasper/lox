@@ -19,10 +19,11 @@ void disassemble_chunk(Chunk * chunk, const char * name)
 unsigned int disassemble_instruction(Chunk * chunk, unsigned int offset)
 {
     printf("%04u ", offset);
-    if(offset > 0 && line_array_get_line(&chunk->lines, offset) == line_array_get_line(&chunk->lines, offset - 1)) {
+    uint32_t line_num = line_array_get_line(&chunk->lines, offset);
+    if(offset > 0 && line_num == line_array_get_line(&chunk->lines, offset - 1)) {
         printf("   | ");
     } else {
-        printf("%4u ", line_array_get_line(&chunk->lines, offset));
+        printf("%4u ", line_num);
     }
 
     uint8_t instruction = chunk->code[offset];
