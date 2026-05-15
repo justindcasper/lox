@@ -2,6 +2,7 @@
 #define CLOX_CHUNK_H
 
 #include "common.h"
+#include "line.h"
 #include "value.h"
 
 typedef enum {
@@ -13,12 +14,12 @@ typedef struct {
     unsigned int count;
     unsigned int capacity;
     uint8_t * code;
-    unsigned int * lines;
+    LineArray lines;
     ValueArray constants;
 } Chunk;
 
 void chunk_init(Chunk * chunk);
-void chunk_write(Chunk * chunk, uint8_t byte, unsigned int line);
+void chunk_write(Chunk * chunk, uint8_t byte, uint32_t line);
 unsigned int chunk_add_constant(Chunk * chunk, Value value);
 void chunk_free(Chunk * chunk);
 
