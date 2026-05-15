@@ -7,6 +7,7 @@
 
 typedef enum {
     OP_CONSTANT,
+    OP_CONSTANT_LONG,
     OP_RETURN
 } OpCode;
 
@@ -21,6 +22,7 @@ typedef struct {
 void chunk_init(Chunk * chunk);
 void chunk_write(Chunk * chunk, uint8_t byte, uint32_t line);
 unsigned int chunk_add_constant(Chunk * chunk, Value value);
+void chunk_write_constant(Chunk * chunk, Value value, uint32_t line);
 void chunk_free(Chunk * chunk);
 
 #endif /* CLOX_CHUNK_H */

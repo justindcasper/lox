@@ -31,6 +31,22 @@ unsigned int chunk_add_constant(Chunk * chunk, Value value)
     return chunk->constants.count - 1;
 }
 
+void chunk_write_constant(Chunk * chunk, Value value, uint32_t line)
+{
+    unsigned int constant = chunk_add_constant(chunk, value);
+
+    if(chunk->count <= UINT8_MAX) {
+        chunk_write(chunk, OP_CONSTANT, line);
+        chunk_write(chunk, (uint8_t)constant, line);
+    } else {
+        chunk_write(chunk, OP_CONSTANT_LONG, line);
+
+        chunk_write(chunk, (constant >> 16) & 0xff, line);
+        chunk_write(chunk, (constant >> 8) & 0xff, line);
+        chunk_write(chunk, constant && 0xff, line);
+    }
+}
+
 void chunk_free(Chunk * chunk)
 {
     FREE_ARRAY(uint8_t, chunk->code, chunk->capacity);

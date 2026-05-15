@@ -5,6 +5,7 @@
 
 static unsigned int simple_instruction(const char * name, unsigned int offset);
 static unsigned int constant_instruction(const char * name, Chunk * chunk, unsigned int offset);
+static unsigned int constant_long_instruction(const char * name, Chunk * chunk, unsigned int offset);
 
 
 void disassemble_chunk(Chunk * chunk, const char * name)
@@ -30,6 +31,8 @@ unsigned int disassemble_instruction(Chunk * chunk, unsigned int offset)
     switch(instruction) {
         case OP_CONSTANT:
             return constant_instruction("OP_CONSTANT", chunk, offset);
+        case OP_CONSTANT_LONG:
+            return constant_instruction("OP_CONSTANT_LONG", chunk, offset);
         case OP_RETURN:
             return simple_instruction("OP_RETURN", offset);
         default:
@@ -52,4 +55,15 @@ static unsigned int constant_instruction(const char * name, Chunk * chunk, unsig
     value_print(chunk->constants.values[constant]);
     printf("'\n");
     return offset + 2;
+}
+
+static unsigned int constant_long_instruction(const char * name, Chunk * chunk, unsigned int offset)
+{
+    uint32_t constant = ((uint32_t)chunk->code[offset + 1] << 16) |
+        ((uint32_t)chunk->code[offset + 2] << 8) | (uint32_t)chunk->code[offset + 3];
+
+    printf("%-16s %4u '", name, constant);
+    value_print(chunk->constants.values[constant]);
+    printf("'\n");
+    return offset + 4;
 }
