@@ -87,7 +87,7 @@ static InterpretResult run(VM * vm)
                 BINARY_OP(/);
                 break;
             case OP_NEGATE:
-                vm_push(vm, -vm_pop(vm));
+                *(vm->stack_top - 1) *= -1;
                 break;
             case OP_RETURN:
                 value_print(vm_pop(vm));
