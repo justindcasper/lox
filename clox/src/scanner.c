@@ -11,6 +11,7 @@ static bool match(Scanner * scanner, char expected);
 static Token make_token(Scanner * scanner, TokenType type);
 static Token error_token(Scanner * scanner, const char * message);
 static void skip_whitespace(Scanner * scanner);
+static void skip_block_comment(Scanner * scanner);
 static Token string(Scanner * scanner);
 static Token number(Scanner * scanner);
 static Token identifier(Scanner * scanner);
@@ -159,6 +160,8 @@ static void skip_whitespace(Scanner * scanner)
                     while(peek(scanner) != '\n' && !at_end(scanner)) {
                         advance(scanner);
                     }
+                } else if(peek_next(scanner) == '*') {
+                    skip_block_comment(scanner);
                 } else {
                     return;
                 }
@@ -166,6 +169,29 @@ static void skip_whitespace(Scanner * scanner)
             default:
                 return;
         }
+    }
+}
+
+static void skip_block_comment(Scanner * scanner)
+{
+    advance(scanner);
+    advance(scanner);
+
+    while(!(peek(scanner) == '*' && peek_next(scanner) == '/') && !at_end(scanner)) {
+        if(peek(scanner) == '\n') {
+            scanner->line++;
+        }
+        // Support nesting through recursion
+        if(peek(scanner) == '/' && peek_next(scanner) == '*') {
+            skip_block_comment(scanner);
+        }
+
+        advance(scanner);
+    }
+
+    if(!at_end(scanner)) {
+        advance(scanner);
+        advance(scanner);
     }
 }
 
