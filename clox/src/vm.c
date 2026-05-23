@@ -32,8 +32,23 @@ void vm_free(VM * vm)
 
 InterpretResult vm_interpret(VM * vm, const char * source)
 {
-    compile(source);
-    return INTERPRET_OK;
+    InterpretResult result = INTERPRET_OK;
+    Chunk chunk;
+    chunk_init(&chunk);
+
+    if(!compile(source, &chunk)) {
+        result = INTERPRET_COMPILE_ERROR;
+        goto CLEANUP;
+    }
+
+    vm->chunk = &chunk;
+    vm->ip = vm->chunk->code;
+
+    result = run(vm);
+
+CLEANUP:
+    chunk_free(&chunk);
+    return result;
 }
 
 void vm_push(VM * vm, Value value)
