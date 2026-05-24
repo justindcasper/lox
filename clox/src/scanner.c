@@ -77,6 +77,10 @@ Token scan_token(Scanner * scanner)
             return make_token(scanner, match(scanner, '=') ? TOKEN_GREATER_EQUAL : TOKEN_GREATER);
         case '"':
             return string(scanner);
+        case '?':
+            return make_token(scanner, TOKEN_QUESTION);
+        case ':':
+            return make_token(scanner, TOKEN_COLON);
     }
 
     return error_token(scanner, "Unexpected character.");
