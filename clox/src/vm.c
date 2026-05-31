@@ -1,8 +1,11 @@
 #include <stdarg.h>
 #include <stdio.h>
+#include <string.h>
 
 #include "compiler.h"
 #include "debug.h"
+#include "memory.h"
+#include "object.h"
 #include "vm.h"
 
 #define BINARY_OP(type, op) \
@@ -18,7 +21,8 @@
 
 static InterpretResult run(VM * vm);
 static void reset_stack(VM * vm);
-static Value peek(VM * vm, unsigned int distance);
+static Value peek(VM * vm, int distance);
+static void concatenate(VM * vm);
 static void runtime_error(VM* vm, const char * format, ...);
 static bool is_falsey(Value value);
 static inline uint8_t read_byte(VM * vm);
@@ -30,11 +34,12 @@ static inline Value read_long_constant(VM * vm);
 void vm_init(VM * vm)
 {
     reset_stack(vm);
+    vm->objects = NULL;
 }
 
 void vm_free(VM * vm)
 {
-
+    free_objects(vm);
 }
 
 InterpretResult vm_interpret(VM * vm, const char * source)
@@ -43,7 +48,7 @@ InterpretResult vm_interpret(VM * vm, const char * source)
     Chunk chunk;
     chunk_init(&chunk);
 
-    if(!compile(source, &chunk)) {
+    if(!compile(source, &chunk, vm)) {
         result = INTERPRET_COMPILE_ERROR;
         goto CLEANUP;
     }
@@ -117,9 +122,19 @@ static InterpretResult run(VM * vm)
             case OP_LESS:
                 BINARY_OP(BOOL_VAL, <);
                 break;
-            case OP_ADD:
-                BINARY_OP(NUMBER_VAL, +);
+            case OP_ADD: {
+                if(IS_STRING(peek(vm, 0)) && IS_STRING(peek(vm, 1))) {
+                    concatenate(vm);
+                } else if(IS_NUMBER(peek(vm, 0)) && IS_NUMBER(peek(vm, 1))) {
+                    double b = AS_NUMBER(vm_pop(vm));
+                    double a = AS_NUMBER(vm_pop(vm));
+                    vm_push(vm, NUMBER_VAL(a + b));
+                } else {
+                    runtime_error(vm, "Operands must be two numbers or two strings.");
+                    return INTERPRET_RUNTIME_ERROR;
+                }
                 break;
+            }
             case OP_SUBTRACT:
                 BINARY_OP(NUMBER_VAL, -);
                 break;
@@ -152,9 +167,24 @@ static void reset_stack(VM * vm)
     vm->stack_top = vm->stack;
 }
 
-static Value peek(VM * vm, unsigned int distance)
+static Value peek(VM * vm, int distance)
 {
-    return *(vm->stack_top - 1 - distance);
+    return vm->stack_top[-1 - distance];
+}
+
+static void concatenate(VM * vm)
+{
+    ObjString * b = AS_STRING(vm_pop(vm));
+    ObjString * a = AS_STRING(vm_pop(vm));
+
+    size_t length = a->length + b->length;
+    char * chars = ALLOCATE(char, length + 1);
+    memcpy(chars, a->chars, a->length);
+    memcpy(chars + a->length, b->chars, b->length);
+    chars[length] = '\0';
+
+    ObjString * result = object_take_string(chars, length, vm);
+    vm_push(vm, OBJ_VAL((Obj *)result));
 }
 
 static void runtime_error(VM * vm, const char * format, ...)

@@ -3,7 +3,8 @@
 
 #include "chunk.h"
 #include "common.h"
+#include "vm.h"
 
-bool compile(const char * source, Chunk * chunk);
+bool compile(const char * source, Chunk * chunk, VM * vm);
 
 #endif /* CLOX_COMPILER_H */

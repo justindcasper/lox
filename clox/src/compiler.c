@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "compiler.h"
+#include "object.h"
 #include "scanner.h"
 
 #ifdef DEBUG_PRINT_CODE
@@ -14,6 +15,7 @@ typedef struct {
     Token previous;
     bool had_error;
     bool panic_mode;
+    VM * vm;
 } Parser;
 
 typedef enum {
@@ -52,6 +54,7 @@ static void binary();
 static void unary();
 static void number();
 static void literal();
+static void string();
 static void parse_precedence(Precedence precedence);
 static ParseRule * get_rule(TokenType type);
 static void advance();
@@ -89,7 +92,7 @@ ParseRule rules[] = {
     [TOKEN_LESS]          = {NULL,     binary,  PREC_COMPARISON},
     [TOKEN_LESS_EQUAL]    = {NULL,     binary,  PREC_COMPARISON},
     [TOKEN_IDENTIFIER]    = {NULL,     NULL,    PREC_NONE},
-    [TOKEN_STRING]        = {NULL,     NULL,    PREC_NONE},
+    [TOKEN_STRING]        = {string,   NULL,    PREC_NONE},
     [TOKEN_NUMBER]        = {number,   NULL,    PREC_NONE},
     [TOKEN_AND]           = {NULL,     NULL,    PREC_NONE},
     [TOKEN_CLASS]         = {NULL,     NULL,    PREC_NONE},
@@ -112,13 +115,14 @@ ParseRule rules[] = {
 };
 
 
-bool compile(const char * source, Chunk * chunk)
+bool compile(const char * source, Chunk * chunk, VM * vm)
 {
     scanner_init(&scanner, source);
     compiling_chunk = chunk;
 
     parser.had_error = false;
     parser.panic_mode = false;
+    parser.vm = vm;
 
     advance();
     expression();
@@ -233,6 +237,13 @@ static void literal()
         default:
             return; // Unreachable
     }
+}
+
+static void string()
+{
+    // Remove quotes in object_copy_string
+    emit_constant(OBJ_VAL((Obj *)object_copy_string(parser.previous.start + 1, parser.previous.length - 2,
+        parser.vm)));
 }
 
 static void parse_precedence(Precedence precedence)

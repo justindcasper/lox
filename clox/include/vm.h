@@ -3,6 +3,7 @@
 
 #include "common.h"
 #include "chunk.h"
+#include "object.h"
 #include "value.h"
 
 #define STACK_MAX 256
@@ -12,6 +13,7 @@ typedef struct {
     uint8_t * ip;
     Value stack[STACK_MAX];
     Value * stack_top;
+    Obj * objects;
 } VM;
 
 typedef enum {
