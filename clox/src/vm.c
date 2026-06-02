@@ -183,7 +183,7 @@ static void concatenate(VM * vm)
     memcpy(chars + a->length, b->chars, b->length);
     chars[length] = '\0';
 
-    ObjString * result = object_take_string(chars, length, vm);
+    ObjString * result = object_copy_string(chars, length, vm);
     vm_push(vm, OBJ_VAL((Obj *)result));
 }
 
