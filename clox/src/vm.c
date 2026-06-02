@@ -184,6 +184,7 @@ static void concatenate(VM * vm)
     chars[length] = '\0';
 
     ObjString * result = object_copy_string(chars, length, vm);
+    FREE_ARRAY(char, chars, length + 1);
     vm_push(vm, OBJ_VAL((Obj *)result));
 }
 

@@ -31,7 +31,7 @@ static void free_object(Obj * object)
     switch(object->type) {
         case OBJ_STRING: {
             ObjString * string = (ObjString *)object;
-            reallocate(string, sizeof(ObjString) + string->length, 0);
+            reallocate(string, sizeof(ObjString) + string->length + 1, 0);
             break;
         }
     }
