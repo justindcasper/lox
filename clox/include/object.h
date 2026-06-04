@@ -18,7 +18,8 @@ struct Obj {
 struct ObjString {
     Obj obj;
     size_t length;
-    char chars[];
+    uint32_t hash;
+    char * chars;
 };
 
 static inline bool is_obj_type(Value value, ObjType type)
@@ -32,6 +33,7 @@ static inline bool is_obj_type(Value value, ObjType type)
 #define AS_CSTRING(value) (((ObjString *)AS_OBJ(value))->chars)
 
 ObjString * object_copy_string(const char * chars, size_t length, void * vm);
+ObjString * object_take_string(char * chars, size_t length, void * vm);
 void object_print(Value value);
 
 #endif /* CLOX_OBJECT_H */

@@ -1,6 +1,6 @@
 add_executable(clox)
 
-target_sources(clox PRIVATE main.c chunk.c compiler.c debug.c line.c memory.c object.c scanner.c value.c vm.c)
+target_sources(clox PRIVATE main.c chunk.c compiler.c debug.c line.c memory.c object.c scanner.c table.c value.c vm.c)
 
 target_include_directories(clox PRIVATE ../include)
 

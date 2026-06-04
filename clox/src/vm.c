@@ -35,10 +35,12 @@ void vm_init(VM * vm)
 {
     reset_stack(vm);
     vm->objects = NULL;
+    table_init(&vm->strings);
 }
 
 void vm_free(VM * vm)
 {
+    table_free(&vm->strings);
     free_objects(vm);
 }
 
@@ -183,8 +185,7 @@ static void concatenate(VM * vm)
     memcpy(chars + a->length, b->chars, b->length);
     chars[length] = '\0';
 
-    ObjString * result = object_copy_string(chars, length, vm);
-    FREE_ARRAY(char, chars, length + 1);
+    ObjString * result = object_take_string(chars, length, vm);
     vm_push(vm, OBJ_VAL((Obj *)result));
 }
 
