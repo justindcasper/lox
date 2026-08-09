@@ -29,17 +29,20 @@ static inline uint8_t read_byte(VM * vm);
 static inline uint32_t read_long(VM * vm);
 static inline Value read_constant(VM * vm);
 static inline Value read_long_constant(VM * vm);
+static inline ObjString * read_string(VM * vm);
 
 
 void vm_init(VM * vm)
 {
     reset_stack(vm);
     vm->objects = NULL;
+    table_init(&vm->globals);
     table_init(&vm->strings);
 }
 
 void vm_free(VM * vm)
 {
+    table_free(&vm->globals);
     table_free(&vm->strings);
     free_objects(vm);
 }
@@ -112,6 +115,34 @@ static InterpretResult run(VM * vm)
             case OP_FALSE:
                 vm_push(vm, BOOL_VAL(false));
                 break;
+            case OP_POP:
+                vm_pop(vm);
+                break;
+            case OP_DEFINE_GLOBAL: {
+                ObjString * name = read_string(vm);
+                table_set(&vm->globals, name, peek(vm, 0));
+                vm_pop(vm);
+                break;
+            }
+            case OP_GET_GLOBAL: {
+                ObjString * name = read_string(vm);
+                Value value;
+                if(!table_get(&vm->globals, name, &value)) {
+                    runtime_error(vm, "Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                vm_push(vm, value);
+                break;
+            }
+            case OP_SET_GLOBAL: {
+                ObjString * name = read_string(vm);
+                if(table_set(&vm->globals, name, peek(vm, 0))) {
+                    table_delete(&vm->globals, name);
+                    runtime_error(vm, "Undefined variable '%s'.", name->chars);
+                    return INTERPRET_RUNTIME_ERROR;
+                }
+                break;
+            }
             case OP_EQUAL: {
                 Value b = vm_pop(vm);
                 Value a = vm_pop(vm);
@@ -156,9 +187,12 @@ static InterpretResult run(VM * vm)
             case OP_NOT:
                 vm_push(vm, BOOL_VAL(is_falsey(vm_pop(vm))));
                 break;
-            case OP_RETURN:
+            case OP_PRINT:
                 value_print(vm_pop(vm));
                 printf("\n");
+                break;
+            case OP_RETURN:
+                // Exit interpreter
                 return INTERPRET_OK;
         }
     }
@@ -226,4 +260,9 @@ static inline Value read_constant(VM * vm)
 static inline Value read_long_constant(VM * vm)
 {
     return vm->chunk->constants.values[read_long(vm)];
+}
+
+static inline ObjString * read_string(VM * vm)
+{
+    return AS_STRING(read_constant(vm));
 }
