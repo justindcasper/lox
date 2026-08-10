@@ -63,8 +63,8 @@ static void string(bool can_assign);
 static void variable(bool can_assign);
 static void named_variable(Token name, bool can_assign);
 static void parse_precedence(Precedence precedence);
-static uint8_t parse_variable(const char * error_msg);
-static void define_variable(uint8_t global);
+static uint32_t parse_variable(const char * error_msg);
+static void define_variable(uint32_t global);
 static ParseRule * get_rule(TokenType type);
 static void advance();
 static void consume(TokenType type, const char * message);
@@ -74,6 +74,7 @@ static void emit_byte(uint8_t byte);
 static void emit_bytes(size_t count, ...);
 static void emit_return();
 static void emit_constant(Value value);
+static void emit_indexed_instruction(uint8_t short_op, uint8_t long_op, uint32_t constant);
 static uint32_t make_constant(Value value);
 static uint32_t identifier_constant(Token * name);
 static void end_compiler();
@@ -169,7 +170,7 @@ static void declaration()
 
 static void var_declaration()
 {
-    uint8_t global = parse_variable("Expect variable name.");
+    uint32_t global = parse_variable("Expect variable name.");
 
     if(match(TOKEN_EQUAL)) {
         expression();
@@ -321,13 +322,13 @@ static void variable(bool can_assign)
 
 static void named_variable(Token name, bool can_assign)
 {
-    uint8_t arg = identifier_constant(&name);
+    uint32_t arg = identifier_constant(&name);
 
     if(can_assign && match(TOKEN_EQUAL)) {
         expression();
-        emit_bytes(2, OP_SET_GLOBAL, arg);
+        emit_indexed_instruction(OP_SET_GLOBAL, OP_SET_GLOBAL_LONG, arg);
     } else {
-        emit_bytes(2, OP_GET_GLOBAL, arg);
+        emit_indexed_instruction(OP_GET_GLOBAL, OP_GET_GLOBAL_LONG, arg);
     }
 }
 
@@ -355,15 +356,15 @@ static void parse_precedence(Precedence precedence)
     }
 }
 
-static uint8_t parse_variable(const char * error_msg)
+static uint32_t parse_variable(const char * error_msg)
 {
     consume(TOKEN_IDENTIFIER, error_msg);
     return identifier_constant(&parser.previous);
 }
 
-static void define_variable(uint8_t global)
+static void define_variable(uint32_t global)
 {
-    emit_bytes(2, OP_DEFINE_GLOBAL, global);
+    emit_indexed_instruction(OP_DEFINE_GLOBAL, OP_DEFINE_GLOBAL_LONG, global);
 }
 
 static ParseRule * get_rule(TokenType type)
@@ -434,13 +435,20 @@ static void emit_return()
 static void emit_constant(Value value)
 {
     uint32_t constant = make_constant(value);
+    emit_indexed_instruction(OP_CONSTANT, OP_CONSTANT_LONG, constant);
+}
+
+static void emit_indexed_instruction(uint8_t short_op, uint8_t long_op, uint32_t constant)
+{
     if(constant > (UINT32_MAX >> 8)) {
         error("Too many constants in one chunk.");
         return;
-    } else if(constant > UINT8_MAX) {
-        emit_bytes(4, OP_CONSTANT_LONG, (constant >> 16) & 0xff, (constant >> 8) & 0xff, constant & 0xff);
+    }
+
+    if(constant > UINT8_MAX) {
+        emit_bytes(4, long_op, (constant >> 16) & 0xff, (constant >> 8) & 0xff, constant & 0xff);
     } else {
-        emit_bytes(2, OP_CONSTANT, (uint8_t)constant);
+        emit_bytes(2, short_op, constant);
     }
 }
 

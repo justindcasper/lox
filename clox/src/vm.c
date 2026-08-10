@@ -30,6 +30,7 @@ static inline uint32_t read_long(VM * vm);
 static inline Value read_constant(VM * vm);
 static inline Value read_long_constant(VM * vm);
 static inline ObjString * read_string(VM * vm);
+static inline ObjString * read_long_string(VM * vm);
 
 
 void vm_init(VM * vm)
@@ -265,4 +266,9 @@ static inline Value read_long_constant(VM * vm)
 static inline ObjString * read_string(VM * vm)
 {
     return AS_STRING(read_constant(vm));
+}
+
+static inline ObjString * read_long_string(VM * vm)
+{
+    return AS_STRING(read_long_constant(vm));
 }

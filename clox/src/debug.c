@@ -32,7 +32,7 @@ unsigned int disassemble_instruction(Chunk * chunk, unsigned int offset)
         case OP_CONSTANT:
             return constant_instruction("OP_CONSTANT", chunk, offset);
         case OP_CONSTANT_LONG:
-            return constant_instruction("OP_CONSTANT_LONG", chunk, offset);
+            return constant_long_instruction("OP_CONSTANT_LONG", chunk, offset);
         case OP_NIL:
             return simple_instruction("OP_NIL", offset);
         case OP_TRUE:
@@ -43,10 +43,16 @@ unsigned int disassemble_instruction(Chunk * chunk, unsigned int offset)
             return simple_instruction("OP_POP", offset);
         case OP_DEFINE_GLOBAL:
             return constant_instruction("OP_DEFINE_GLOBAL", chunk, offset);
+        case OP_DEFINE_GLOBAL_LONG:
+            return constant_long_instruction("OP_DEFINE_GLOBAL_LONG", chunk, offset);
         case OP_GET_GLOBAL:
             return constant_instruction("OP_GET_GLOBAL", chunk, offset);
+        case OP_GET_GLOBAL_LONG:
+            return constant_long_instruction("OP_GET_GLOBAL_LONG", chunk, offset);
         case OP_SET_GLOBAL:
             return constant_instruction("OP_SET_GLOBAL", chunk, offset);
+        case OP_SET_GLOBAL_LONG:
+            return constant_long_instruction("OP_SET_GLOBAL_LONG", chunk, offset);
         case OP_EQUAL:
             return simple_instruction("OP_EQUAL", offset);
         case OP_GREATER:
